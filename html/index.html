@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kurvendiskussion</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+
+        </nav>
+    </header>
+    <h1>Kurvendiskussion</h1>
+    <p>geben sie eine Funktion ein</p>
+    <div class="input-row">
+        <h3>f(x) =</h3>
+        <form class="analyze-form" action="/analyze" method="post">
+            <label for="function-input" class="sr-only">Funktion</label>
+            <input id="function-input" type="text" name="function" placeholder="z.B. x² + 3*x - 4" required>
+            <button type="submit">Analysieren</button>
+        </form>
+    </div>
+    
+</body>
+</html>
