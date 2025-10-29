@@ -30,3 +30,6 @@
             white-space: nowrap;
             border: 0;
         }
+        body {
+            background: linear-gradient(135deg, #814949, #5b3232);
+          }
