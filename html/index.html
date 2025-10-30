@@ -1,36 +1,68 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kurvendiskussion</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <script src="/js/script.js"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Funktion Rechner — Demo</title>
+<link rel="stylesheet" href="/css/style.css" />
+<script src="/js/script.js" defer></script>
 </head>
 <body>
-    <header>
-        <nav>
+  <div class="container" role="main" aria-labelledby="main-heading">
+    <h1 id="main-heading">Gib Deine Funktion ein</h1>
 
         </nav>
     </header>
     <h1>Kurvendiskussion</h1>
     <p>geben sie eine Funktion ein</p>
-    <div class="input-row">
-        <h3>f(x) =</h3>
-        <form id="analyze_form" class="analyze-form" name="form" method="POST">
-            <label for="function-input" class="sr-only">Funktion</label>
-            <input id="function-input" type="text" name="function" placeholder="z.B. x^2 + 3 * x - 4" required>
-            <button type="submit">Analysieren</button>
-        </form>
-    </div>
-<<<<<<< HEAD
-    
-    <p id="demo">
-        <button onclick="calculate()">Berechnen</button>
-    </p>
-    
-    
-=======
->>>>>>> 42f4639b715cb377f7aef4df5981cc5e336cf90b
+
+
+    <form id="fx-form" onsubmit="return false;" autocomplete="off" aria-describedby="helptext">
+      <label for="fx">f(x) =</label>
+      <div class="input-row">
+        <input id="fx" name="fx" type="text" placeholder="z. B. 2*x^2 + 3*x - 5" required />
+        <button id="start-btn" type="button">Berechnung starten</button>
+      </div>
+      <div id="helptext" class="help">
+        <a href="#" id="howto" onclick="alert('Gebe z.B. x^2, sin(x), 3*x+1. Potenzen: x^2 oder x**2.');return false;">Wie gibt man Funktionen ein?</a>
+      </div>
+
+      <div id="loading" class="loading" style="display:none" aria-live="polite">
+        <!-- kleiner eingebetteter Loading SVG -->
+        <svg viewBox="0 0 50 50" aria-hidden="true">
+          <circle cx="25" cy="25" r="20" fill="none" stroke="#0ea5a4" stroke-width="5" stroke-linecap="round" stroke-dasharray="90" stroke-dashoffset="0">
+            <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s" repeatCount="indefinite"/> <!-- Loading animation -->
+          </circle>
+        </svg>
+        <span>Berechnung erfolgt...</span>
+      </div>
+
+      <div class="options" role="radiogroup" aria-label="Auswahl">
+        <div class="option">
+          <input type="radio" id="opt-graph" name="mode" value="graph" checked />
+          <label for="opt-graph" style="font-weight:600;margin:0">Graph der Funktion zeichnen</label>
+        </div>
+        <div class="option">
+          <input type="radio" id="opt-full" name="mode" value="full" />
+          <label for="opt-full" style="font-weight:600;margin:0">Komplette Kurvendiskussion Online-Rechner</label>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button id="calc-btn" type="button">Berechnen</button>
+        <button id="reset-btn" type="button" style="background:#ef4444">Zurücksetzen</button>
+      </div>
+    </form>
+
+    <div id="output" class="result" aria-live="polite" style="display:none"></div>
+
+    <footer>
+      <a href="#" onclick="alert('Impressum — Demo');return false">Impressum</a>
+      |
+      <a href="#" onclick="alert('Datenschutz — Demo');return false">Datenschutz</a>
+    </footer>
+  </div>
+
+
 </body>
 </html>
