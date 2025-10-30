@@ -1,26 +1,217 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kurvendiskussion</title>
-    <link rel="stylesheet" href="/css/style.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Funktion Rechner — Demo</title>
+<style>
+  :root{font-family:system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial; color:#1f2937}
+  body{margin:0;padding:32px;background:#f8fafc}
+  .container{max-width:760px;margin:0 auto;background:#fff;padding:24px;border-radius:12px;box-shadow:0 6px 20px rgba(15,23,42,0.06)}
+  h1{font-size:20px;margin:0 0 14px}
+  label{display:block;font-weight:600;margin-bottom:6px}
+  .input-row{display:flex;gap:8px;align-items:center}
+  input[type="text"]{flex:1;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px}
+  .help{font-size:13px;color:#6b7280;margin-top:6px}
+  .loading{display:flex;align-items:center;gap:10px;margin-top:12px;color:#6b7280}
+  .loading svg{width:28px;height:28px;opacity:0.95}
+  .options{margin-top:18px;padding:14px;border-radius:10px;background:#f1f5f9}
+  .option{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .btn-row{display:flex;gap:10px;align-items:center;margin-top:14px}
+  button{background:#0ea5a4;color:white;border:none;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.6;cursor:not-allowed}
+  footer{margin-top:18px;font-size:13px;color:#6b7280;display:flex;gap:8px}
+  .result{margin-top:16px;padding:12px;border-radius:10px;background:#fff;border:1px solid #e6eef0}
+  /* einfache responsive */
+  @media (max-width:520px){.input-row{flex-direction:column;align-items:stretch}}
+</style>
 </head>
 <body>
-    <header>
-        <nav>
+  <div class="container" role="main" aria-labelledby="main-heading">
+    <h1 id="main-heading">Gib Deine Funktion ein</h1>
 
-        </nav>
-    </header>
-    <h1>Kurvendiskussion</h1>
-    <p>geben sie eine Funktion ein</p>
-    <div class="input-row">
-        <h3>f(x) =</h3>
-        <form class="analyze-form" action="/analyze" method="post">
-            <label for="function-input" class="sr-only">Funktion</label>
-            <input id="function-input" type="text" name="function" placeholder="z.B. x² + 3*x - 4" required>
-            <button type="submit">Analysieren</button>
-        </form>
-    </div>
+    <form id="fx-form" onsubmit="return false;" autocomplete="off" aria-describedby="helptext">
+      <label for="fx">f(x) =</label>
+      <div class="input-row">
+        <input id="fx" name="fx" type="text" placeholder="z. B. 2*x^2 + 3*x - 5" required />
+        <button id="start-btn" type="button">Berechnung starten</button>
+      </div>
+      <div id="helptext" class="help">
+        <a href="#" id="howto" onclick="alert('Gebe z.B. x^2, sin(x), 3*x+1. Potenzen: x^2 oder x**2.');return false;">Wie gibt man Funktionen ein?</a>
+      </div>
+
+      <div id="loading" class="loading" style="display:none" aria-live="polite">
+        <!-- kleiner eingebetteter Loading SVG -->
+        <svg viewBox="0 0 50 50" aria-hidden="true">
+          <circle cx="25" cy="25" r="20" fill="none" stroke="#0ea5a4" stroke-width="5" stroke-linecap="round" stroke-dasharray="90" stroke-dashoffset="0">
+            <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s" repeatCount="indefinite"/>
+          </circle>
+        </svg>
+        <span>Berechnung erfolgt...</span>
+      </div>
+
+      <div class="options" role="radiogroup" aria-label="Auswahl">
+        <div class="option">
+          <input type="radio" id="opt-graph" name="mode" value="graph" checked />
+          <label for="opt-graph" style="font-weight:600;margin:0">Graph der Funktion zeichnen</label>
+        </div>
+        <div class="option">
+          <input type="radio" id="opt-full" name="mode" value="full" />
+          <label for="opt-full" style="font-weight:600;margin:0">Komplette Kurvendiskussion Online-Rechner</label>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button id="calc-btn" type="button">Berechnen</button>
+        <button id="reset-btn" type="button" style="background:#ef4444">Zurücksetzen</button>
+      </div>
+    </form>
+
+    <div id="output" class="result" aria-live="polite" style="display:none"></div>
+
+    <footer>
+      <a href="#" onclick="alert('Impressum — Demo');return false">Impressum</a>
+      |
+      <a href="#" onclick="alert('Datenschutz — Demo');return false">Datenschutz</a>
+    </footer>
+  </div>
+
+<script>
+/*
+ Einfaches Demo-JS:
+ - zeigt "Berechnung erfolgt..." (Loading)
+ - bei Graph-Auswahl zeichnet es einen Platzhalter-Canvas-Graph
+ - bei "Komplette Kurvendiskussion" zeigt es eine einfache Auswertung (Ableitung approx)
+ Hinweis: Dies ist eine DEMO, kein produktiver Mathe-Parser.
+*/
+
+const fxInput = document.getElementById('fx');
+const loading = document.getElementById('loading');
+const output = document.getElementById('output');
+const calcBtn = document.getElementById('calc-btn');
+const resetBtn = document.getElementById('reset-btn');
+
+function showLoading(show){
+  loading.style.display = show ? 'flex' : 'none';
+}
+
+function safeEval(expr, x){
+  // Sehr vereinfachte, etwas sichere Auswertung:
+  // Erlaubte Zeichen: Zahlen, x, +-*/().^, sin cos tan, Math functions via mapping
+  // Ersetzt ^ durch ** für JS
+  const allowed = /^[0-9+\-*/().\s,xA-Za-z^%]*$/;
+  if(!allowed.test(expr)) throw new Error('Ungültige Zeichen in Ausdruck.');
+  const replaced = expr.replace(/\^/g,'**').replace(/sqrt\(/g,'Math.sqrt(');
+  // erlaubte functions
+  const safe = replaced
+    .replace(/\bsin\(/g,'Math.sin(')
+    .replace(/\bcos\(/g,'Math.cos(')
+    .replace(/\btan\(/g,'Math.tan(')
+    .replace(/\blog\(/g,'Math.log(')
+    .replace(/\bexp\(/g,'Math.exp(')
+    .replace(/\babs\(/g,'Math.abs(');
+  // eslint-disable-next-line no-new-func
+  const fn = new Function('x','return ' + safe + ';');
+  return Number(fn(x));
+}
+
+function drawPlaceholderGraph(expr){
+  // Erstelle Canvas und zeichne Kurve (Platzhalter)
+  const canvas = document.createElement('canvas');
+  canvas.width = 700;
+  canvas.height = 280;
+  canvas.style.maxWidth = '100%';
+  const ctx = canvas.getContext('2d');
+  // Hintergrund
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // Achsen
+  ctx.strokeStyle = '#e6eef0';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0,canvas.height/2);
+  ctx.lineTo(canvas.width,canvas.height/2);
+  ctx.moveTo(canvas.width/2,0);
+  ctx.lineTo(canvas.width/2,canvas.height);
+  ctx.stroke();
+  // Kurve (probieren x von -10..10)
+  ctx.strokeStyle = '#0ea5a4';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  const samples = 600;
+  let first=true;
+  for(let i=0;i<=samples;i++){
+    const t = i / samples;
+    const x = -10 + t * 20;
+    let y;
+    try{
+      y = safeEval(expr, x);
+      if(!isFinite(y) || isNaN(y)) y = 0;
+    } catch(e){
+      y = 0;
+    }
+    // map x -> pixel
+    const px = (i / samples) * canvas.width;
+    // map y to pixel using a simple scale
+    const scale = 15; // größe der y-skala
+    const py = canvas.height/2 - y*scale;
+    if(first){ ctx.moveTo(px,py); first=false; } else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+  return canvas;
+}
+
+calcBtn.addEventListener('click', async ()=>{
+  output.style.display='none';
+  const expr = fxInput.value.trim();
+  if(!expr){ alert('Bitte gib zuerst eine Funktion ein.'); fxInput.focus(); return; }
+  showLoading(true);
+  calcBtn.disabled = true;
+  resetBtn.disabled = true;
+
+  // Simuliere Rechenzeit
+  await new Promise(r => setTimeout(r, 800));
+
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  output.innerHTML = '';
+  if(mode === 'graph'){
+    try{
+      const canvas = drawPlaceholderGraph(expr);
+      output.appendChild(canvas);
+    } catch(e){
+      output.textContent = 'Fehler beim Zeichnen: ' + e.message;
+    }
+  } else {
+    // einfache "Kurvendiskussion" demo: Werte und numerische Ableitung bei x=1
+    try {
+      const x0 = 1;
+      const y0 = safeEval(expr, x0);
+      const h = 1e-5;
+      const y1 = safeEval(expr, x0 + h);
+      const deriv = (y1 - y0)/h;
+      const ul = document.createElement('div');
+      ul.innerHTML = `<strong>Auswertung (Demo)</strong>
+        <div>f(${x0}) ≈ ${Number(y0.toFixed(6))}</div>
+        <div>f'(${x0}) ≈ ${Number(deriv.toFixed(6))}</div>
+        <div style="margin-top:8px;font-size:13px;color:#6b7280">Hinweis: Dies ist ein vereinfachtes Demo-Ergebnis.</div>`;
+      output.appendChild(ul);
+    } catch(e){
+      output.textContent = 'Fehler bei Auswertung: ' + e.message;
+    }
+  }
+
+  showLoading(false);
+  output.style.display = 'block';
+  calcBtn.disabled = false;
+  resetBtn.disabled = false;
+});
+
+resetBtn.addEventListener('click', ()=>{
+  fxInput.value = '';
+  output.style.display = 'none';
+  showLoading(false);
+  fxInput.focus();
+});
+</script>
 </body>
 </html>
