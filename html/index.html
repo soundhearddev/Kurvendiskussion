@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kurvendiskussion</title>
     <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/script.js"></script>
 </head>
 <body>
     <header>
@@ -16,12 +17,17 @@
     <p>geben sie eine Funktion ein</p>
     <div class="input-row">
         <h3>f(x) =</h3>
-        <form class="analyze-form" action="/analyze" method="post">
+        <form id="analyze_form" class="analyze-form" name="form" method="POST">
             <label for="function-input" class="sr-only">Funktion</label>
-            <input id="function-input" type="text" name="function" placeholder="z.B. x² + 3*x - 4" required>
+            <input id="function-input" type="text" name="function" placeholder="z.B. x^2 + 3 * x - 4" required>
             <button type="submit">Analysieren</button>
         </form>
     </div>
+    
+    <p id="demo">
+        <button onclick="calculate()">Berechnen</button>
+    </p>
+    
     
 </body>
 </html>
