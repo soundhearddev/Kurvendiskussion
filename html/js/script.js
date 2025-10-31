@@ -106,8 +106,7 @@ calcBtn.addEventListener('click', async ()=>{
       const ul = document.createElement('div');
       ul.innerHTML = `<strong>Auswertung (Demo)</strong>
         <div>f(${x0}) ≈ ${Number(y0.toFixed(6))}</div>
-        <div>f'(${x0}) ≈ ${Number(deriv.toFixed(6))}</div>
-        <div style="margin-top:8px;font-size:13px;color:#6b7280">Hinweis: Dies ist ein vereinfachtes Demo-Ergebnis.</div>`;
+        <div>f'(${x0}) ≈ ${Number(deriv.toFixed(6))}</div>`;
       output.appendChild(ul);
     } catch(e){
       output.textContent = 'Fehler bei Auswertung: ' + e.message;
