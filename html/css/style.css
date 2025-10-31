@@ -84,6 +84,14 @@ input[type="text"] {
   margin-top: 14px;
 }
 
+.bild {
+  display: block;
+
+  border-radius: 50%;
+  margin-bottom: 16px;
+}
+
+
 button {
   background: #0ea5a4;
   color: white;
