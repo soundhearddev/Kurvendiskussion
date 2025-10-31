@@ -126,3 +126,9 @@ resetBtn.addEventListener('click', ()=>{
   showLoading(false);
   fxInput.focus();
 });
+
+
+document.getElementById("berechnen").addEventListener("click", () => {
+  // Beim Klicken wird einfach die Ergebnis-Box eingeblendet
+  document.getElementById("ausgabe").style.display = "block";
+});

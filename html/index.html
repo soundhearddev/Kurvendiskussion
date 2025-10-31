@@ -1,169 +1,161 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Funktion Rechner — Demo</title>
-<link rel="stylesheet" href="css/style.css" />
-<script src="js/script.js" defer></script>
-</head>
-<body>
-  <div class="container" role="main" aria-labelledby="main-heading">
-    <h1 id="main-heading">Gib Deine Funktion ein</h1>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Funktion Rechner — Demo</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="js/script.js" defer></script>
+  </head>
 
-        </nav>
-    </header>
-
-<div>
-  <img src="Media/Kreis.jpg" alt="Mein Logo" width="120">
-  </div>
-
-    <h1>Kurvendiskussion</h1>
-    <p>geben sie eine Funktion ein</p>
-
-
-    <form id="fx-form" onsubmit="return false;" autocomplete="off" aria-describedby="helptext">
-      <label for="fx">f(x) =</label>
-      <div class="input-row">
-        <input id="fx" name="fx" type="text" placeholder="z. B. 2*x^2 + 3*x - 5" required />
+  <body>
+    <nav>
+      <div class="container" role="main" aria-labelledby="main-heading">
+        <h1 id="main-heading">Gib Deine Funktion ein</h1>
       </div>
-      <div id="helptext" class="help">
-        <a href="#" id="howto" onclick="alert('Gebe z.B. x^2, sin(x), 3*x+1. Potenzen: x^2 oder x**2.');return false;">Wie gibt man Funktionen ein?</a>
+    </nav>
+    <main class="container" role="main" aria-labelledby="main-heading">
+      <div>
+        <img src="Media/Kreis.jpg" alt="Mein Logo" width="120" />
       </div>
 
-      <div id="loading" class="loading" style="display:none" aria-live="polite">
-        <!-- kleiner eingebetteter Loading SVG -->
-        <svg viewBox="0 0 50 50" aria-hidden="true">
-          <circle cx="25" cy="25" r="20" fill="none" stroke="#0ea5a4" stroke-width="5" stroke-linecap="round" stroke-dasharray="90" stroke-dashoffset="0">
-            <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s" repeatCount="indefinite"/> <!-- Loading animation -->
-          </circle>
-        </svg>
-        <span>Berechnung erfolgt...</span>
-      </div>
+      <h1>Kurvendiskussion</h1>
+      <p>geben sie eine Funktion ein</p>
 
-      <div class="options" role="radiogroup" aria-label="Auswahl">
-        <div class="option">
-          <input type="radio" id="opt-graph" name="mode" value="graph" checked />
-          <label for="opt-graph" style="font-weight:600;margin:0">Graph der Funktion zeichnen</label>
+      <form
+        id="fx-form"
+        onsubmit="return false;"
+        autocomplete="off"
+        aria-describedby="helptext"
+      >
+        <label for="fx">f(x) =</label>
+        <div class="input-row">
+          <input
+            id="fx"
+            name="fx"
+            type="text"
+            placeholder="z. B. 2*x^2 + 3*x - 5"
+            required
+          />
         </div>
-        <div class="option">
-          <input type="radio" id="opt-full" name="mode" value="full" />
-          <label for="opt-full" style="font-weight:600;margin:0">Komplette Kurvendiskussion Online-Rechner</label>
+        <div id="helptext" class="help">
+          <a
+            href="#"
+            id="howto"
+            onclick="alert('Gebe z.B. x^2, sin(x), 3*x+1. Potenzen: x^2 oder x**2.');return false;"
+            >Wie gibt man Funktionen ein?</a
+          >
         </div>
-      </div>
 
-      <!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<title>Kurvendiskussion Rechner</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-  body {
-    font-family: system-ui, sans-serif;
-    background: #f8fafc;
-    color: #1f2937;
-    margin: 0;
-    padding: 30px;
-  }
-  .box {
-    background: #fff;
-    max-width: 700px;
-    margin: 0 auto;
-    padding: 24px;
-    border-radius: 12px;
-    box-shadow: 0 4px 18px rgba(0,0,0,0.05);
-  }
-  h1 {
-    text-align: center;
-    margin-bottom: 20px;
-  }
-  label {
-    font-weight: 600;
-  }
-  input {
-    padding: 10px;
-    width: 200px;
-    border-radius: 8px;
-    border: 1px solid #d1d5db;
-  }
-  button {
-    padding: 10px 14px;
-    border-radius: 8px;
-    border: none;
-    background: #0ea5a4;
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  button:hover {
-    background: #0d9488;
-  }
-  .result {
-    margin-top: 20px;
-    background: #f1f5f9;
-    padding: 16px;
-    border-radius: 10px;
-  }
-  .result h2 {
-    margin-top: 0;
-    color: #0ea5a4;
-  }
-  .line {
-    margin-bottom: 6px;
-  }
-</style>
-</head>
-<body>
+        <div
+          id="loading"
+          class="loading"
+          style="display: none"
+          aria-live="polite"
+        >
+          <!-- kleiner eingebetteter Loading SVG -->
+          <svg viewBox="0 0 50 50" aria-hidden="true">
+            <circle
+              cx="25"
+              cy="25"
+              r="20"
+              fill="none"
+              stroke="#0ea5a4"
+              stroke-width="5"
+              stroke-linecap="round"
+              stroke-dasharray="90"
+              stroke-dashoffset="0"
+            >
+              <animateTransform
+                attributeName="transform"
+                type="rotate"
+                from="0 25 25"
+                to="360 25 25"
+                dur="1s"
+                repeatCount="indefinite"
+              />
+              <!-- Loading animation -->
+            </circle>
+          </svg>
+          <span>Berechnung erfolgt...</span>
+        </div>
 
-<div class="box">
-  <h1>Kurvendiskussion</h1>
-  <label for="funktion">Funktionsgleichung:</label>
-  <input type="text" id="funktion" placeholder="z. B. f(x)=x" value="f(x)=x">
-  <button id="berechnen">Berechnen</button>
+        <div class="options" role="radiogroup" aria-label="Auswahl">
+          <div class="option">
+            <input
+              type="radio"
+              id="opt-graph"
+              name="mode"
+              value="graph"
+              checked
+            />
+            <label for="opt-graph" style="font-weight: 600; margin: 0"
+              >Graph der Funktion zeichnen</label
+            >
+          </div>
+          <div class="option">
+            <input type="radio" id="opt-full" name="mode" value="full" />
+            <label for="opt-full" style="font-weight: 600; margin: 0"
+              >Komplette Kurvendiskussion Online-Rechner</label
+            >
+          </div>
+        </div>
 
-  <div id="ausgabe" class="result" style="display:none;">
-    <h2>Ergebnisse</h2>
-    <div class="line"><strong>Funktionsgleichung:</strong> f(x) = x</div>
-    <div class="line"><strong>1. Ableitung:</strong> f′(x) = 1</div>
-    <div class="line"><strong>2. Ableitung:</strong> f′′(x) = 0</div>
-    <div class="line"><strong>3. Ableitung:</strong> f′′′(x) = 0</div>
-    <div class="line"><strong>Stammfunktion:</strong> F(x) = x² ⁄ 2</div>
-    <div class="line"><strong>Nullstelle:</strong> x = 0</div>
-    <div class="line"><strong>Grenzwert x → ∞:</strong> ∞</div>
-    <div class="line"><strong>Grenzwert x → −∞:</strong> −∞</div>
-    <div class="line"><strong>Definitionsbereich:</strong> Dₓ = ]−∞, ∞[</div>
-    <div class="line"><strong>Symmetrie:</strong> Punktsymmetrie zum Ursprung</div>
-  </div>
-</div>
+        <div class="box">
+          <h1>Kurvendiskussion</h1>
+          <label for="funktion">Funktionsgleichung:</label>
+          <input
+            type="text"
+            id="funktion"
+            placeholder="z. B. f(x)=x"
+            value="f(x)=x"
+          />
+          <button id="berechnen">Berechnen</button>
 
-<script>
-document.getElementById("berechnen").addEventListener("click", () => {
-  // Beim Klicken wird einfach die Ergebnis-Box eingeblendet
-  document.getElementById("ausgabe").style.display = "block";
-});
-</script>
+          <div id="ausgabe" class="result" style="display: none">
+            <h2>Ergebnisse</h2>
+            <div class="line">
+              <strong>Funktionsgleichung:</strong> f(x) = x
+            </div>
+            <div class="line"><strong>1. Ableitung:</strong> f′(x) = 1</div>
+            <div class="line"><strong>2. Ableitung:</strong> f′′(x) = 0</div>
+            <div class="line"><strong>3. Ableitung:</strong> f′′′(x) = 0</div>
+            <div class="line">
+              <strong>Stammfunktion:</strong> F(x) = x² ⁄ 2
+            </div>
+            <div class="line"><strong>Nullstelle:</strong> x = 0</div>
+            <div class="line"><strong>Grenzwert x → ∞:</strong> ∞</div>
+            <div class="line"><strong>Grenzwert x → −∞:</strong> −∞</div>
+            <div class="line">
+              <strong>Definitionsbereich:</strong> Dₓ = ]−∞, ∞[
+            </div>
+            <div class="line">
+              <strong>Symmetrie:</strong> Punktsymmetrie zum Ursprung
+            </div>
+          </div>
+        </div>
 
-</body>
-</html>
+        <div class="btn-row">
+          <button id="calc-btn" type="button">Berechnen</button>
+          <button id="reset-btn" type="button" style="background: #ef4444">
+            Zurücksetzen
+          </button>
+        </div>
+      </form>
 
-      <div class="btn-row">
-        <button id="calc-btn" type="button">Berechnen</button>
-        <button id="reset-btn" type="button" style="background:#ef4444">Zurücksetzen</button>
-      </div>
-    </form>
-
-    <div id="output" class="result" aria-live="polite" style="display:none"></div>
-
-    <footer>
+      <div
+        id="output"
+        class="result"
+        aria-live="polite"
+        style="display: none"
+      ></div>
+    </main>
+    <footer class="container" role="main" aria-labelledby="main-heading">
       <a href="#" onclick="alert('Impressum — Demo');return false">Impressum</a>
       |
-      <a href="#" onclick="alert('Datenschutz — Demo');return false">Datenschutz</a>
+      <a href="#" onclick="alert('Datenschutz — Demo');return false"
+        >Datenschutz</a
+      >
     </footer>
-  </div>
-
-  
-
-
-</body>
+  </body>
 </html>
