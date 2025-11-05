@@ -5,129 +5,131 @@ const output = document.getElementById('output');
 const calcBtn = document.getElementById('calc-btn');
 const resetBtn = document.getElementById('reset-btn');
 
-function showLoading(show){
-  loading.style.display = show ? 'flex' : 'none';
+// Funktion zur Validierung der Eingabe
+function validateFunction(input) {
+    // Erlaubte mathematische Ausdrücke und Operatoren
+    const validChars = /^[0-9x\s\+\-\*\/\^\(\)\.\,\sin\scos\stan]*$/;
+    return validChars.test(input);
 }
 
-function safeEval(expr, x){
-  // Sehr vereinfachte, etwas sichere Auswertung:
-  // Erlaubte Zeichen: Zahlen, x, +-*/().^, sin cos tan, Math functions via mapping
-  // Ersetzt ^ durch ** für JS
-  const allowed = /^[0-9+\-*/().\s,xA-Za-z^%]*$/;
-  if(!allowed.test(expr)) throw new Error('Ungültige Zeichen in Ausdruck.');
-  const replaced = expr.replace(/\^/g,'**').replace(/sqrt\(/g,'Math.sqrt(');
-  // erlaubte functions
-  const safe = replaced
-    .replace(/\bsin\(/g,'Math.sin(')
-    .replace(/\bcos\(/g,'Math.cos(')
-    .replace(/\btan\(/g,'Math.tan(')
-    .replace(/\blog\(/g,'Math.log(')
-    .replace(/\bexp\(/g,'Math.exp(')
-    .replace(/\babs\(/g,'Math.abs(');
-  // eslint-disable-next-line no-new-func
-  const fn = new Function('x','return ' + safe + ';');
-  return Number(fn(x));
-}
-
-function drawPlaceholderGraph(expr){
-  // Erstelle Canvas und zeichne Kurve (Platzhalter)
-  const canvas = document.createElement('canvas');
-  canvas.width = 700;
-  canvas.height = 280;
-  canvas.style.maxWidth = '100%';
-  const ctx = canvas.getContext('2d');
-  // Hintergrund
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  // Achsen
-  ctx.strokeStyle = '#e6eef0';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0,canvas.height/2);
-  ctx.lineTo(canvas.width,canvas.height/2);
-  ctx.moveTo(canvas.width/2,0);
-  ctx.lineTo(canvas.width/2,canvas.height);
-  ctx.stroke();
-  // Kurve (probieren x von -10..10)
-  ctx.strokeStyle = '#0ea5a4';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  const samples = 600;
-  let first=true;
-  for(let i=0;i<=samples;i++){
-    const t = i / samples;
-    const x = -10 + t * 20;
-    let y;
-    try{
-      y = safeEval(expr, x);
-      if(!isFinite(y) || isNaN(y)) y = 0;
-    } catch(e){
-      y = 0;
-    }
-    // map x -> pixel
-    const px = (i / samples) * canvas.width;
-    // map y to pixel using a simple scale
-    const scale = 15; // größe der y-skala
-    const py = canvas.height/2 - y*scale;
-    if(first){ ctx.moveTo(px,py); first=false; } else ctx.lineTo(px,py);
-  }
-  ctx.stroke();
-  return canvas;
-}
-
-calcBtn.addEventListener('click', async ()=>{
-  output.style.display='none';
-  const expr = fxInput.value.trim();
-  if(!expr){ alert('Bitte gib zuerst eine Funktion ein.'); fxInput.focus(); return; }
-  showLoading(true);
-  calcBtn.disabled = true;
-  resetBtn.disabled = true;
-
-  // Simuliere Rechenzeit
-  await new Promise(r => setTimeout(r, 800));
-
-  const mode = document.querySelector('input[name="mode"]:checked').value;
-  output.innerHTML = '';
-  if(mode === 'graph'){
-    try{
-      const canvas = drawPlaceholderGraph(expr);
-      output.appendChild(canvas);
-    } catch(e){
-      output.textContent = 'Fehler beim Zeichnen: ' + e.message;
-    }
-  } else {
-    // einfache "Kurvendiskussion" demo: Werte und numerische Ableitung bei x=1
+// Funktion zum Parsen der Eingabe
+function parseFunction(input) {
     try {
-      const x0 = 1;
-      const y0 = safeEval(expr, x0);
-      const h = 1e-5;
-      const y1 = safeEval(expr, x0 + h);
-      const deriv = (y1 - y0)/h;
-      const ul = document.createElement('div');
-      ul.innerHTML = `<strong>Auswertung (Demo)</strong>
-        <div>f(${x0}) ≈ ${Number(y0.toFixed(6))}</div>
-        <div>f'(${x0}) ≈ ${Number(deriv.toFixed(6))}</div>`;
-      output.appendChild(ul);
-    } catch(e){
-      output.textContent = 'Fehler bei Auswertung: ' + e.message;
+        // Bereinige die Eingabe
+        const cleanInput = input.replace(/\s+/g, '')
+                              .replace(/\*\*/g, '^')
+                              .toLowerCase();
+        
+        return {
+            originalFunction: input,
+            cleanFunction: cleanInput,
+            isValid: validateFunction(cleanInput)
+        };
+    } catch (error) {
+        return {
+            originalFunction: input,
+            cleanFunction: '',
+            isValid: false,
+            error: error.message
+        };
     }
-  }
+}
 
-  showLoading(false);
-  output.style.display = 'block';
-  calcBtn.disabled = false;
-  resetBtn.disabled = false;
+// Event Handler für Berechnungsbutton
+calcBtn.addEventListener('click', () => {
+    const functionInput = fxInput.value;
+    showLoading(true);
+    
+    // Parse die Funktion
+    const parsedFunction = parseFunction(functionInput);
+    
+    if (!parsedFunction.isValid) {
+        output.innerHTML = '<div class="error">Ungültige Funktion. Bitte überprüfen Sie Ihre Eingabe.</div>';
+        output.style.display = 'block';
+        showLoading(false);
+        return;
+    }
+
+    // Hole den ausgewählten Modus
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    
+    if (mode === 'graph') {
+        prepareGraphData(parsedFunction);
+    } else {
+        prepareAnalysisData(parsedFunction);
+    }
 });
 
-resetBtn.addEventListener('click', ()=>{
-  fxInput.value = '';
-  output.style.display = 'none';
-  showLoading(false);
-  fxInput.focus();
+// Funktion zur Vorbereitung der Graphendaten
+function prepareGraphData(parsedFunction) {
+    // Hier würden später die x-y Koordinaten berechnet
+    const graphData = {
+        function: parsedFunction.cleanFunction,
+        xRange: [-10, 10], // Standard x-Bereich
+        pointCount: 100    // Anzahl der zu berechnenden Punkte
+    };
+    
+    displayGraphData(graphData);
+}
+
+// Funktion zur Vorbereitung der Analysedaten
+function prepareAnalysisData(parsedFunction) {
+    // Hier würden später die Analysedaten berechnet
+    const analysisData = {
+        function: parsedFunction.cleanFunction,
+        domain: "ℝ", // Standardmäßig alle reellen Zahlen
+        type: "Noch nicht berechnet"
+    };
+    
+    displayAnalysisData(analysisData);
+}
+
+// Funktion zum Anzeigen der Graphendaten
+function displayGraphData(data) {
+    output.innerHTML = `
+        <h2>Graphendarstellung</h2>
+        <p>Funktion: f(x) = ${data.function}</p>
+        <p>X-Bereich: [${data.xRange[0]}, ${data.xRange[1]}]</p>
+        <div id="graph-container">
+            <!-- Hier würde später der Graph gezeichnet -->
+            <p>Graph wird vorbereitet...</p>
+        </div>
+    `;
+    output.style.display = 'block';
+    showLoading(false);
+}
+
+// Funktion zum Anzeigen der Analysedaten
+function displayAnalysisData(data) {
+    output.innerHTML = `
+        <h2>Kurvendiskussion</h2>
+        <p>Funktion: f(x) = ${data.function}</p>
+        <p>Definitionsbereich: ${data.domain}</p>
+        <p>Funktionstyp: ${data.type}</p>
+    `;
+    output.style.display = 'block';
+    showLoading(false);
+}
+
+// Event Handler für Moduswechsel
+document.getElementById('calc-opt').addEventListener('change', (e) => {
+    const mode = e.target.value;
+    if (mode === 'graph') {
+        console.log('Graph-Modus ausgewählt');
+    }
+});
+
+// Funktion zum Anzeigen/Verbergen des Ladezustands
+function showLoading(show) {
+    loading.style.display = show ? 'flex' : 'none';
+}
+
+// Event Handler für Reset-Button
+resetBtn.addEventListener('click', () => {
+    fxInput.value = '';
+    output.style.display = 'none';
+    showLoading(false);
+    fxInput.focus();
 });
 
 
-document.getElementById("berechnen").addEventListener("click", () => {
-  // Beim Klicken wird einfach die Ergebnis-Box eingeblendet
-  document.getElementById("ausgabe").style.display = "block";
-});

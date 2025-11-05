@@ -45,60 +45,33 @@
             >Wie gibt man Funktionen ein?</a
           >
         </div>
-
-        <div
-          id="loading"
-          class="loading"
-          style="display: none"
-          aria-live="polite"
-        >
-          <!-- kleiner eingebetteter Loading SVG -->
-          <svg viewBox="0 0 50 50" aria-hidden="true">
-            <circle
-              cx="25"
-              cy="25"
-              r="20"
-              fill="none"
-              stroke="#0ea5a4"
-              stroke-width="5"
-              stroke-linecap="round"
-              stroke-dasharray="90"
-              stroke-dashoffset="0"
-            >
-              <animateTransform
-                attributeName="transform"
-                type="rotate"
-                from="0 25 25"
-                to="360 25 25"
-                dur="1s"
-                repeatCount="indefinite"
-              />
-              <!-- Loading animation -->
-            </circle>
-          </svg>
+        
+        <div>
+          <div
+            id="loading"
+            class="loading"
+            style="display: none"
+            aria-live="polite"
+          >
           <span>Berechnung erfolgt...</span>
         </div>
+      </div>
 
-        <div class="options" role="radiogroup" aria-label="Auswahl">
+
           <div class="option">
             <input
-              type="radio"
-              id="opt-graph"
-              name="mode"
-              value="graph"
-              checked
+              type="radio" 
+              id="calc-opt" 
+              name="mode" 
+              value="full" 
+              checked 
+              
             />
-            <label for="opt-graph" style="font-weight: 600; margin: 0"
-              >Graph der Funktion zeichnen</label
-            >
+            <label for="calc-opt" style="font-weight: 600; margin: 0">
+              Kurvendiskussion Rechner
+            </label>
           </div>
-          <div class="option">
-            <input type="radio" id="opt-full" name="mode" value="full" />
-            <label for="opt-full" style="font-weight: 600; margin: 0"
-              >Komplette Kurvendiskussion Online-Rechner</label
-            >
-          </div>
-        </div>
+        
 
 
         <div class="btn-row">
@@ -116,12 +89,5 @@
         style="display: none"
       ></div>
     </main>
-    <footer class="container" role="main" aria-labelledby="main-heading">
-      <a href="#" onclick="alert('Impressum — Demo');return false">Impressum</a>
-      |
-      <a href="#" onclick="alert('Datenschutz — Demo');return false"
-        >Datenschutz</a
-      >
-    </footer>
   </body>
 </html>
