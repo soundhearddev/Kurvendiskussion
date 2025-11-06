@@ -1,135 +1,667 @@
+// ============================================================================
+// FUNKTIONSANALYSE-RECHNER
+// ============================================================================
+// Dieser Code ermöglicht die Analyse mathematischer Funktionen:
+// 1. Kurvendiskussion - Mathematische Analyse (Nullstellen, Extrema, etc.)
+// ============================================================================
 
-const fxInput = document.getElementById('fx');
-const loading = document.getElementById('loading');
-const output = document.getElementById('output');
-const calcBtn = document.getElementById('calc-btn');
-const resetBtn = document.getElementById('reset-btn');
+// ----------------------------------------------------------------------------
+// DOM-ELEMENTE
+// ----------------------------------------------------------------------------
+const elements = {
+    fxInput: document.getElementById('fx'),
+    loading: document.getElementById('loading'),
+    output: document.getElementById('output'),
+    calcBtn: document.getElementById('calc-btn'),
+    resetBtn: document.getElementById('reset-btn'),
+    modeRadios: document.querySelectorAll('input[name="mode"]')
+};
 
-// Funktion zur Validierung der Eingabe
-function validateFunction(input) {
-    // Erlaubte mathematische Ausdrücke und Operatoren
-    const validChars = /^[0-9x\s\+\-\*\/\^\(\)\.\,\sin\scos\stan]*$/;
-    return validChars.test(input);
+// ----------------------------------------------------------------------------
+// KONSTANTEN UND KONFIGURATION
+// ----------------------------------------------------------------------------
+const CONFIG = {
+    // Graph-Einstellungen (noch nicht implementiert. Für zukünftige Erweiterungen)
+    GRAPH: {
+        DEFAULT_X_MIN: -10,
+        DEFAULT_X_MAX: 10,
+        POINT_COUNT: 200,
+        STEP_SIZE: 0.1
+    },
+    
+    // Validierung der Funktionseingabe (erlaubte Zeichen, Länge)
+    VALIDATION: {
+        ALLOWED_CHARS: /^[0-9x\s\+\-\*\/\^\(\)\.\,sincotan]*$/i,
+        MAX_LENGTH: 200
+    },
+    
+    // Numerische Berechnungen (Einstellungen für Genauigkeit)
+    NUMERICAL: {
+        EPSILON: 0.001,           // Genauigkeit für numerische Ableitungen
+        TOLERANCE: 0.0001,        // Toleranz für Nullstellensuche
+        ZERO_THRESHOLD: 0.001,    // Schwellwert für Nullstellen
+        DERIVATIVE_THRESHOLD: 0.05 // Schwellwert für kritische Punkte
+    }
+};
+
+// ----------------------------------------------------------------------------
+// EINGABE-VALIDIERUNG
+// ----------------------------------------------------------------------------
+
+/**
+ * Validiert die eingegebene mathematische Funktion
+ * @param {string} input - Die zu validierende Eingabe
+ * @returns {boolean} - true wenn gültig, false sonst
+ */
+function validateFunction(input) { 
+    if (!input || input.trim().length === 0) {
+        return false;
+    }
+    
+    if (input.length > CONFIG.VALIDATION.MAX_LENGTH) {
+        return false;
+    }
+    
+    // Prüfe auf erlaubte Zeichen
+    if (!CONFIG.VALIDATION.ALLOWED_CHARS.test(input)) {
+        return false;
+    }
+    
+    // Prüfe auf ausgeglichene Klammern
+    const openBrackets = (input.match(/\(/g) || []).length;
+    const closeBrackets = (input.match(/\)/g) || []).length;
+    if (openBrackets !== closeBrackets) {
+        return false;
+    }
+    
+    return true;
 }
 
-// Funktion zum Parsen der Eingabe
+/**
+ * Bereinigt und normalisiert die Funktionseingabe
+ * @param {string} input - Die Roheingabe
+ * @returns {string} - Die bereinigte Funktion
+ */
+// macht die funktion halt besser verarbeitbar
+// entfernt leerzeichen, ersetzt ** durch ^, ersetzt , durch . und macht alles klein
+// z.B. "  Sin(x)  +  2,5  " -> "sin(x)+2.5"
+function cleanFunction(input) {
+    return input
+        .replace(/\s+/g, '')
+        .replace(/\*\*/g, '^')
+        .replace(/,/g, '.')
+        .toLowerCase();
+}
+
+/**
+ * Analysiert und validiert die Funktionseingabe
+ * @param {string} input - Die Benutzereingabe
+ * @returns {Object} - Objekt mit Validierungsergebnis und bereinigter Funktion
+ */
+// kombiniert die funktionen cleanFunction und validateFunction und gibt ein objekt zurück
 function parseFunction(input) {
+    const cleaned = cleanFunction(input);
+    const isValid = validateFunction(cleaned);
+    
+    return {
+        original: input,
+        cleaned: cleaned,
+        isValid: isValid,
+        error: isValid ? null : 'Ungültige Funktion'
+    };
+}
+
+// ----------------------------------------------------------------------------
+// MATHEMATISCHE BERECHNUNGEN
+// ----------------------------------------------------------------------------
+
+/**
+ * Evaluiert die Funktion für einen gegebenen x-Wert
+ * @param {string} func - Die mathematische Funktion (mit 'x' als Variable)
+ * @param {number} x - Der x-Wert
+ * @returns {number|null} - Der y-Wert oder null bei Fehler
+ */
+// evaluiert die funktion func an der stelle x (also berechnet f(x))
+function evaluateFunction(func, x) {
     try {
-        // Bereinige die Eingabe
-        const cleanInput = input.replace(/\s+/g, '')
-                              .replace(/\*\*/g, '^')
-                              .toLowerCase();
+        // Ersetze mathematische Funktionen durch JavaScript-Äquivalente (damit die eval-Funktion sie versteht)
+        let expression = func
+            .replace(/\^/g, '**')
+            .replace(/sin/g, 'Math.sin')
+            .replace(/cos/g, 'Math.cos')
+            .replace(/tan/g, 'Math.tan')
+            .replace(/x/g, `(${x})`);
+
+        // Evaluiere den Ausdruck 
+        const result = eval(expression);
         
-        return {
-            originalFunction: input,
-            cleanFunction: cleanInput,
-            isValid: validateFunction(cleanInput)
-        };
+        // Prüfe auf ungültige Ergebnisse 
+        if (!isFinite(result)) {
+            return null; // Vermeide unendliche oder nicht definierte Werte
+        }
+        
+        return result;
     } catch (error) {
-        return {
-            originalFunction: input,
-            cleanFunction: '',
-            isValid: false,
-            error: error.message
-        };
+        return null; // Bei Fehlern während der Auswertung
     }
 }
 
-// Event Handler für Berechnungsbutton
-calcBtn.addEventListener('click', () => {
-    const functionInput = fxInput.value;
-    showLoading(true);
+/**
+ * Berechnet die erste Ableitung numerisch
+ * @param {string} func - Die Funktion
+ * @param {number} x - Der x-Wert
+ * @returns {number|null} - Die Ableitung an der Stelle x
+ */
+// zentrale differenzenformel zur berechnung der ersten ableitung
+function calculateDerivative(func, x) {
+    const h = CONFIG.NUMERICAL.EPSILON;
+    const y1 = evaluateFunction(func, x + h);
+    const y2 = evaluateFunction(func, x - h);
     
-    // Parse die Funktion
+    // also wenn eine der beiden auswertungen fehlschlägt, gib null zurück (also nochmal sicherheit)
+    if (y1 === null || y2 === null) {
+        return null;
+    }
+    
+    // Zentrale Differenzenformel: f'(x) ≈ [f(x+h) - f(x-h)] / (2h) 
+    return (y1 - y2) / (2 * h);
+}
+
+/**
+ * Berechnet die zweite Ableitung numerisch
+ * @param {string} func - Die Funktion
+ * @param {number} x - Der x-Wert
+ * @returns {number|null} - Die zweite Ableitung an der Stelle x
+ */
+// zentrale differenzenformel zur berechnung der zweiten ableitung (also die ableitung der ableitung... besser gesagt die krümmung)
+function calculateSecondDerivative(func, x) {
+    const h = CONFIG.NUMERICAL.EPSILON;
+    const y0 = evaluateFunction(func, x);
+    const y1 = evaluateFunction(func, x + h);
+    const y2 = evaluateFunction(func, x - h);
+    
+    if (y0 === null || y1 === null || y2 === null) {
+        return null;
+    }
+    
+    // Zweite Ableitung: f''(x) ≈ [f(x+h) - 2f(x) + f(x-h)] / h²
+    // (also wie stark sich die erste ableitung ändert)
+    return (y1 - 2 * y0 + y2) / (h * h);
+}
+
+// ----------------------------------------------------------------------------
+// KURVENDISKUSSION - HAUPTANALYSE
+// ----------------------------------------------------------------------------
+// hier werden alle wichtigen eigenschaften der funktion berechnet
+// wie nullstellen, extremstellen (maxima und minima) und wendepunkte
+// ----------------------------------------------------------------------------
+/**
+ * Findet Nullstellen der Funktion im gegebenen Bereich
+ * @param {string} func - Die Funktion
+ * @param {number} xMin - Minimaler x-Wert
+ * @param {number} xMax - Maximaler x-Wert
+ * @returns {Array} - liste von Nullstellen
+ */
+
+function findZeros(func, xMin, xMax) {
+    const zeros = [];
+    const step = 0.1;
+    
+    // Prüfe zuerst ob f(xMin) selbst eine Nullstelle ist
+    const yMin = evaluateFunction(func, xMin);
+    if (yMin !== null && Math.abs(yMin) < CONFIG.NUMERICAL.ZERO_THRESHOLD) {
+        zeros.push(xMin);
+    }
+    
+    let prevY = yMin;
+    let prevX = xMin;
+    
+    for (let x = xMin + step; x <= xMax; x += step) {
+        const y = evaluateFunction(func, x);
+        
+        if (y === null) {
+            prevY = y;
+            prevX = x;
+            continue;
+        }
+        
+        // Prüfe ob y selbst nahe null ist
+        if (Math.abs(y) < CONFIG.NUMERICAL.ZERO_THRESHOLD) {
+            // Prüfe ob nicht zu nahe an letzter Nullstelle
+            if (zeros.length === 0 || Math.abs(x - zeros[zeros.length - 1]) > 0.5) {
+                zeros.push(x);
+            }
+        }
+        // Vorzeichenwechsel erkannt
+        else if (prevY !== null && (prevY < 0 && y > 0) || (prevY > 0 && y < 0)) {
+            const zero = bisection(func, prevX, x);
+            if (zero !== null) {
+                // Prüfe ob nicht zu nahe an letzter Nullstelle
+                if (zeros.length === 0 || Math.abs(zero - zeros[zeros.length - 1]) > 0.5) {
+                    zeros.push(zero);
+                }
+            }
+        }
+        
+        prevY = y;
+        prevX = x;
+    }
+    
+    return zeros;
+}
+
+/**
+ * Bisektionsverfahren zur präzisen Nullstellenbestimmung
+ * @param {string} func - Die Funktion
+ * @param {number} a - Linke Intervallgrenze
+ * @param {number} b - Rechte Intervallgrenze
+ * @returns {number|null} - Die Nullstelle oder null
+ */
+function bisection(func, a, b) {
+    let fa = evaluateFunction(func, a);
+    let fb = evaluateFunction(func, b);
+    
+    if (fa === null || fb === null) return null;
+    
+    const maxIterations = 50;
+    
+    for (let i = 0; i < maxIterations; i++) {
+        const c = (a + b) / 2;
+        const fc = evaluateFunction(func, c);
+        
+        if (fc === null) return null;
+        
+        if (Math.abs(fc) < CONFIG.NUMERICAL.TOLERANCE) {
+            return c;
+        }
+        
+        if (Math.sign(fc) === Math.sign(fa)) {
+            a = c;
+            fa = fc;
+        } else {
+            b = c;
+            fb = fc;
+        }
+        
+        if (Math.abs(b - a) < CONFIG.NUMERICAL.TOLERANCE) {
+            return (a + b) / 2;
+        }
+    }
+    
+    return (a + b) / 2;
+}
+
+/**
+ * Findet Extremstellen (Maxima und Minima)
+ * @param {string} func - Die Funktion
+ * @param {number} xMin - Minimaler x-Wert
+ * @param {number} xMax - Maximaler x-Wert
+ * @returns {Object} - Objekt mit Maxima und Minima
+ */
+function findExtrema(func, xMin, xMax) {
+    const extrema = { maxima: [], minima: [] };
+    const step = 0.2;
+    
+    for (let x = xMin; x <= xMax; x += step) {
+        const derivative = calculateDerivative(func, x);
+        
+        if (derivative === null) continue;
+        
+        // Prüfe ob erste Ableitung nahe null (kritischer Punkt)
+        if (Math.abs(derivative) < CONFIG.NUMERICAL.DERIVATIVE_THRESHOLD) {
+            const secondDerivative = calculateSecondDerivative(func, x);
+            
+            if (secondDerivative === null) continue;
+            
+            const y = evaluateFunction(func, x);
+            if (y === null) continue;
+            
+            // Klassifiziere mit zweiter Ableitung
+            if (secondDerivative > 0.1) {
+                // Minimum - prüfe ob nicht zu nahe an bestehendem
+                if (extrema.minima.length === 0 || 
+                    Math.abs(x - extrema.minima[extrema.minima.length - 1].x) > 1.0) {
+                    extrema.minima.push({ x: x, y: y });
+                }
+            } else if (secondDerivative < -0.1) {
+                // Maximum - prüfe ob nicht zu nahe an bestehendem
+                if (extrema.maxima.length === 0 || 
+                    Math.abs(x - extrema.maxima[extrema.maxima.length - 1].x) > 1.0) {
+                    extrema.maxima.push({ x: x, y: y });
+                }
+            }
+        }
+    }
+    
+    return extrema;
+}
+
+/**
+ * Findet Wendepunkte der Funktion
+ * @param {string} func - Die Funktion
+ * @param {number} xMin - Minimaler x-Wert
+ * @param {number} xMax - Maximaler x-Wert
+ * @returns {Array} - Array von Wendepunkten
+ */
+function findInflectionPoints(func, xMin, xMax) {
+    const inflectionPoints = [];
+    const step = 0.2;
+    
+    let prevSecondDerivative = calculateSecondDerivative(func, xMin);
+    let prevX = xMin;
+    
+    for (let x = xMin + step; x <= xMax; x += step) {
+        const secondDerivative = calculateSecondDerivative(func, x);
+        
+        if (secondDerivative === null || prevSecondDerivative === null) {
+            prevSecondDerivative = secondDerivative;
+            prevX = x;
+            continue;
+        }
+        
+        // Vorzeichenwechsel der zweiten Ableitung
+        if ((prevSecondDerivative < -0.1 && secondDerivative > 0.1) ||
+            (prevSecondDerivative > 0.1 && secondDerivative < -0.1)) {
+            
+            const y = evaluateFunction(func, x);
+            if (y !== null) {
+                // Prüfe ob nicht zu nahe an bestehendem Wendepunkt
+                if (inflectionPoints.length === 0 || 
+                    Math.abs(x - inflectionPoints[inflectionPoints.length - 1].x) > 1.0) {
+                    inflectionPoints.push({ x: x, y: y });
+                }
+            }
+        }
+        
+        prevSecondDerivative = secondDerivative;
+        prevX = x;
+    }
+    
+    return inflectionPoints;
+}
+
+/**
+ * Führt eine vollständige Kurvendiskussion durch
+ * @param {Object} parsedFunction - Das geparste Funktionsobjekt
+ * @returns {Object} - Objekt mit allen Analyseergebnissen
+ */
+function performCurveAnalysis(parsedFunction) {
+    const func = parsedFunction.cleaned;
+    const xMin = CONFIG.GRAPH.DEFAULT_X_MIN;
+    const xMax = CONFIG.GRAPH.DEFAULT_X_MAX;
+    
+    // Berechne alle relevanten Eigenschaften
+    const zeros = findZeros(func, xMin, xMax);
+    const extrema = findExtrema(func, xMin, xMax);
+    const inflectionPoints = findInflectionPoints(func, xMin, xMax);
+    
+    // Berechne y-Achsenabschnitt
+    const yIntercept = evaluateFunction(func, 0);
+    
+    return {
+        function: parsedFunction.original,
+        cleanedFunction: func,
+        domain: "ℝ (alle reellen Zahlen)",
+        yIntercept: yIntercept,
+        zeros: zeros,
+        maxima: extrema.maxima,
+        minima: extrema.minima,
+        inflectionPoints: inflectionPoints
+    };
+}
+
+// ----------------------------------------------------------------------------
+// GRAPHENDARSTELLUNG - DATENVORBEREITUNG
+// ----------------------------------------------------------------------------
+
+/**
+ * Generiert Datenpunkte für die Graphendarstellung
+ * @param {Object} parsedFunction - Das geparste Funktionsobjekt
+ * @returns {Object} - Objekt mit Graphendaten
+ */
+function prepareGraphData(parsedFunction) {
+    const func = parsedFunction.cleaned;
+    const xMin = CONFIG.GRAPH.DEFAULT_X_MIN;
+    const xMax = CONFIG.GRAPH.DEFAULT_X_MAX;
+    const pointCount = CONFIG.GRAPH.POINT_COUNT;
+    
+    const dataPoints = [];
+    const step = (xMax - xMin) / pointCount;
+    
+    for (let x = xMin; x <= xMax; x += step) {
+        const y = evaluateFunction(func, x);
+        if (y !== null) {
+            dataPoints.push({ x: x, y: y });
+        }
+    }
+    
+    return {
+        function: parsedFunction.original,
+        cleanedFunction: func,
+        xRange: [xMin, xMax],
+        dataPoints: dataPoints
+    };
+}
+
+// ----------------------------------------------------------------------------
+// AUSGABE UND DARSTELLUNG
+// ----------------------------------------------------------------------------
+
+/**
+ * Formatiert eine Zahl für die Anzeige (2 Dezimalstellen)
+ * @param {number} num - Die zu formatierende Zahl
+ * @returns {string} - Formatierte Zahl
+ */
+function formatNumber(num) {
+    return num.toFixed(2);
+}
+
+/**
+ * Zeigt die Ergebnisse der Kurvendiskussion an
+ * @param {Object} analysisData - Die Analysedaten
+ */
+function displayAnalysisData(analysisData) {
+    let html = `
+        <div class="analysis-container">
+            <h2>Kurvendiskussion</h2>
+            
+            <div class="analysis-section">
+                <h3>Funktion</h3>
+                <p class="function-display">f(x) = ${analysisData.function}</p>
+            </div>
+            
+            <div class="analysis-section">
+                <h3>Definitionsbereich</h3>
+                <p>D = ${analysisData.domain}</p>
+            </div>
+    `;
+    
+    // Y-Achsenabschnitt
+    if (analysisData.yIntercept !== null) {
+        html += `
+            <div class="analysis-section">
+                <h3>Y-Achsenabschnitt</h3>
+                <p>f(0) = ${formatNumber(analysisData.yIntercept)}</p>
+                <p class="detail">Punkt: (0, ${formatNumber(analysisData.yIntercept)})</p>
+            </div>
+        `;
+    }
+    
+    // Nullstellen
+    html += `
+        <div class="analysis-section">
+            <h3>Nullstellen</h3>
+    `;
+    if (analysisData.zeros.length > 0) {
+        html += '<ul class="results-list">';
+        analysisData.zeros.forEach((zero, index) => {
+            html += `<li>x<sub>${index + 1}</sub> = ${formatNumber(zero)} → f(${formatNumber(zero)}) ≈ 0</li>`;
+        });
+        html += '</ul>';
+    } else {
+        html += '<p class="no-results">Keine Nullstellen im Bereich [-10, 10] gefunden</p>';
+    }
+    html += '</div>';
+    
+    // Extremstellen
+    html += '<div class="analysis-section"><h3>Extremstellen</h3>';
+    
+    // Maxima
+    if (analysisData.maxima.length > 0) {
+        html += '<h4>Hochpunkte (Maxima)</h4><ul class="results-list">';
+        analysisData.maxima.forEach((max, index) => {
+            html += `<li>H<sub>${index + 1}</sub>(${formatNumber(max.x)} | ${formatNumber(max.y)})</li>`;
+        });
+        html += '</ul>';
+    }
+    
+    // Minima
+    if (analysisData.minima.length > 0) {
+        html += '<h4>Tiefpunkte (Minima)</h4><ul class="results-list">';
+        analysisData.minima.forEach((min, index) => {
+            html += `<li>T<sub>${index + 1}</sub>(${formatNumber(min.x)} | ${formatNumber(min.y)})</li>`;
+        });
+        html += '</ul>';
+    }
+    
+    if (analysisData.maxima.length === 0 && analysisData.minima.length === 0) {
+        html += '<p class="no-results">Keine Extremstellen im Bereich gefunden</p>';
+    }
+    html += '</div>';
+    
+    // Wendepunkte
+    html += `
+        <div class="analysis-section">
+            <h3>Wendepunkte</h3>
+    `;
+    if (analysisData.inflectionPoints.length > 0) {
+        html += '<ul class="results-list">';
+        analysisData.inflectionPoints.forEach((point, index) => {
+            html += `<li>W<sub>${index + 1}</sub>(${formatNumber(point.x)} | ${formatNumber(point.y)})</li>`;
+        });
+        html += '</ul>';
+    } else {
+        html += '<p class="no-results">Keine Wendepunkte im Bereich gefunden</p>';
+    }
+    html += '</div>';
+    
+    html += '</div>';
+    
+    elements.output.innerHTML = html;
+    elements.output.style.display = 'block';
+    showLoading(false);
+}
+
+/**
+ * Zeigt die Graphendaten an
+ * @param {Object} graphData - Die Graphendaten
+ */
+function displayGraphData(graphData) {
+    let html = `
+        <div class="graph-container">
+            <h2>Graphendarstellung</h2>
+            
+            <div class="graph-info">
+                <p><strong>Funktion:</strong> f(x) = ${graphData.function}</p>
+                <p><strong>X-Bereich:</strong> [${graphData.xRange[0]}, ${graphData.xRange[1]}]</p>
+                <p><strong>Datenpunkte:</strong> ${graphData.dataPoints.length}</p>
+            </div>
+            
+            <div class="graph-placeholder">
+                <p>Graph-Visualisierung</p>
+                <p class="detail">Hier würde der Graph gezeichnet werden</p>
+                <p class="detail">${graphData.dataPoints.length} Punkte berechnet</p>
+            </div>
+        </div>
+    `;
+    
+    elements.output.innerHTML = html;
+    elements.output.style.display = 'block';
+    showLoading(false);
+}
+
+/**
+ * Zeigt oder verbirgt den Ladezustand
+ * @param {boolean} show - true zum Anzeigen, false zum Verbergen
+ */
+function showLoading(show) {
+    elements.loading.style.display = show ? 'flex' : 'none';
+}
+
+// ----------------------------------------------------------------------------
+// EVENT-HANDLER
+// ----------------------------------------------------------------------------
+
+/**
+ * Handler für den Berechnen-Button
+ */
+elements.calcBtn.addEventListener('click', () => {
+    const functionInput = elements.fxInput.value;
+    
+    // Zeige Ladeanzeige
+    showLoading(true);
+    elements.output.style.display = 'none';
+    
+    // Parse und validiere die Funktion
     const parsedFunction = parseFunction(functionInput);
     
     if (!parsedFunction.isValid) {
-        output.innerHTML = '<div class="error">Ungültige Funktion. Bitte überprüfen Sie Ihre Eingabe.</div>';
-        output.style.display = 'block';
+        elements.output.innerHTML = `
+            <div class="error-message">
+                <h3>Fehler</h3>
+                <p>Die eingegebene Funktion ist ungültig.</p>
+                <p class="detail">Bitte überprüfen Sie Ihre Eingabe.</p>
+                <p class="detail">Erlaubt sind: Zahlen, x, +, -, *, /, ^, (, ), sin, cos, tan</p>
+            </div>
+        `;
+        elements.output.style.display = 'block';
         showLoading(false);
         return;
     }
-
-    // Hole den ausgewählten Modus
-    const mode = document.querySelector('input[name="mode"]:checked').value;
     
-    if (mode === 'graph') {
-        prepareGraphData(parsedFunction);
-    } else {
-        prepareAnalysisData(parsedFunction);
+    // Ermittle den ausgewählten Modus
+    const selectedMode = document.querySelector('input[name="mode"]:checked');
+    const mode = selectedMode ? selectedMode.value : 'analysis';
+    
+    // Verzögere die Berechnung um 300ms für bessere UX
+    setTimeout(() => {
+        if (mode === 'graph') {
+            // Graph-Modus
+            const graphData = prepareGraphData(parsedFunction);
+            displayGraphData(graphData);
+        } else {
+            // Kurvendiskussion-Modus
+            const analysisData = performCurveAnalysis(parsedFunction);
+            displayAnalysisData(analysisData);
+        }
+    }, 300);
+});
+
+/**
+ * Handler für den Reset-Button
+ */
+elements.resetBtn.addEventListener('click', () => {
+    elements.fxInput.value = '';
+    elements.output.style.display = 'none';
+    showLoading(false);
+    elements.fxInput.focus();
+});
+
+/**
+ * Handler für Enter-Taste im Eingabefeld
+ */
+elements.fxInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        elements.calcBtn.click();
     }
 });
 
-// Funktion zur Vorbereitung der Graphendaten
-function prepareGraphData(parsedFunction) {
-    // Hier würden später die x-y Koordinaten berechnet
-    const graphData = {
-        function: parsedFunction.cleanFunction,
-        xRange: [-10, 10], // Standard x-Bereich
-        pointCount: 100    // Anzahl der zu berechnenden Punkte
-    };
-    
-    displayGraphData(graphData);
-}
+// ----------------------------------------------------------------------------
+// INITIALISIERUNG
+// ----------------------------------------------------------------------------
 
-// Funktion zur Vorbereitung der Analysedaten
-function prepareAnalysisData(parsedFunction) {
-    // Hier würden später die Analysedaten berechnet
-    const analysisData = {
-        function: parsedFunction.cleanFunction,
-        domain: "ℝ", // Standardmäßig alle reellen Zahlen
-        type: "Noch nicht berechnet"
-    };
-    
-    displayAnalysisData(analysisData);
-}
-
-// Funktion zum Anzeigen der Graphendaten
-function displayGraphData(data) {
-    output.innerHTML = `
-        <h2>Graphendarstellung</h2>
-        <p>Funktion: f(x) = ${data.function}</p>
-        <p>X-Bereich: [${data.xRange[0]}, ${data.xRange[1]}]</p>
-        <div id="graph-container">
-            <!-- Hier würde später der Graph gezeichnet -->
-            <p>Graph wird vorbereitet...</p>
-        </div>
-    `;
-    output.style.display = 'block';
-    showLoading(false);
-}
-
-// Funktion zum Anzeigen der Analysedaten
-function displayAnalysisData(data) {
-    output.innerHTML = `
-        <h2>Kurvendiskussion</h2>
-        <p>Funktion: f(x) = ${data.function}</p>
-        <p>Definitionsbereich: ${data.domain}</p>
-        <p>Funktionstyp: ${data.type}</p>
-    `;
-    output.style.display = 'block';
-    showLoading(false);
-}
-
-// Event Handler für Moduswechsel
-document.getElementById('calc-opt').addEventListener('change', (e) => {
-    const mode = e.target.value;
-    if (mode === 'graph') {
-        console.log('Graph-Modus ausgewählt');
-    }
+// Setze Fokus auf Eingabefeld beim Laden
+document.addEventListener('DOMContentLoaded', () => {
+    elements.fxInput.focus();
+    console.log('Funktionsanalyse-Rechner initialisiert');
 });
-
-// Funktion zum Anzeigen/Verbergen des Ladezustands
-function showLoading(show) {
-    loading.style.display = show ? 'flex' : 'none';
-}
-
-// Event Handler für Reset-Button
-resetBtn.addEventListener('click', () => {
-    fxInput.value = '';
-    output.style.display = 'none';
-    showLoading(false);
-    fxInput.focus();
-});
-
-

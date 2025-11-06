@@ -2,92 +2,156 @@
 <html lang="de">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Funktion Rechner — Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Kurvendiskussion und Funktionsanalyse Rechner für mathematische Funktionen" />
+    <title>Funktionsanalyse & Kurvendiskussion Rechner</title>
     <link rel="stylesheet" href="css/style.css" />
     <script src="js/script.js" defer></script>
   </head>
 
   <body>
+    <!-- ========================================
+         NAVIGATION / HEADER
+         ======================================== -->
     <nav>
-      <div class="container" role="main" aria-labelledby="main-heading">
-        <h1 id="main-heading">Gib Deine Funktion ein</h1>
+      <div class="container">
+        <h1 id="main-heading">Funktionsanalyse Rechner</h1>
       </div>
     </nav>
+
+    <!-- ========================================
+         HAUPTINHALT
+         ======================================== -->
     <main class="container" role="main" aria-labelledby="main-heading">
+      
+      <!-- Einleitung -->
+      <section class="intro">
+        <h2>Kurvendiskussion & Graphendarstellung</h2>
+        <p>Geben Sie eine mathematische Funktion ein und analysieren Sie deren Eigenschaften.</p>
+      </section>
 
+      <!-- Eingabeformular -->
+      <section class="input-section">
+        <form
+          id="fx-form"
+          onsubmit="return false;"
+          autocomplete="off"
+          aria-describedby="helptext"
+        >
+          
+          <!-- Funktionseingabe -->
+          <div class="form-group">
+            <label for="fx">Funktion f(x) =</label>
+            <div class="input-wrapper">
+              <input
+                id="fx"
+                name="fx"
+                type="text"
+                placeholder="z.B. 2*x^2 + 3*x - 5  oder  sin(x)*x"
+                required
+                aria-required="true"
+                aria-describedby="helptext"
+              />
+            </div>
+          </div>
 
-      <h1>Kurvendiskussion</h1>
-      <p>geben sie eine Funktion ein</p>
+          <!-- Hilfetext -->
+          <div id="helptext" class="help">
+            <a
+              href="#"
+              id="howto"
+              onclick="alert('Erlaubte Eingaben:\n\n• Operatoren: +, -, *, /, ^\n• Funktionen: sin(x), cos(x), tan(x)\n• Beispiele:\n  - x^2 + 3*x - 5\n  - sin(x)*cos(x)\n  - x^3 - 2*x^2 + x\n\nPotenzen können als x^2 oder x**2 eingegeben werden.'); return false;"
+              aria-label="Hilfe zur Eingabe von Funktionen"
+            >
+              Wie gibt man Funktionen ein?
+            </a>
+          </div>
 
-      <div>
-      <form
-        id="fx-form"
-        onsubmit="return false;"
-        autocomplete="off"
-        aria-describedby="helptext"
-      >
-        <label for="fx">f(x) =</label>
-        <div class="input-row">
-          <input
-            id="fx"
-            name="fx"
-            type="text"
-            placeholder="z. B. 2*x^2 + 3*x - 5"
-            required
-          />
-        </div>
-        <div id="helptext" class="help">
-          <a
-            href="#"
-            id="howto"
-            onclick="alert('Gebe z.B. x^2, sin(x), 3*x+1. Potenzen: x^2 oder x**2.');return false;"
-            >Wie gibt man Funktionen ein?</a
-          >
-        </div>
-        
-        <div>
+          <!-- Ladeanzeige -->
           <div
             id="loading"
             class="loading"
             style="display: none"
+            role="status"
             aria-live="polite"
           >
-          <span>Berechnung erfolgt...</span>
-        </div>
-      </div>
-
-
-          <div class="option">
-            <input
-              type="radio" 
-              id="calc-opt" 
-              name="mode" 
-              value="full" 
-              checked 
-              
-            />
-            <label for="calc-opt" style="font-weight: 600; margin: 0">
-              Kurvendiskussion Rechner
-            </label>
+            <span>Berechnung läuft...</span>
           </div>
-        
 
+          <!-- Modus-Auswahl -->
+          <fieldset class="mode-selection">
+            <legend class="visually-hidden">Berechnungsmodus auswählen</legend>
+            
+            <div class="option">
+              <input
+                type="radio"
+                id="analysis-opt"
+                name="mode"
+                value="analysis"
+                checked
+              />
+              <label for="analysis-opt">
+                <strong>Kurvendiskussion</strong>
+                <span class="option-description">Nullstellen, Extrema, Wendepunkte</span>
+              </label>
+            </div>
 
-        <div class="btn-row">
-          <button id="calc-btn" type="button">Berechnen</button>
-          <button id="reset-btn" type="button" style="background: #ef4444">
-            Zurücksetzen
-          </button>
-        </div>
-      </form>
+            <div class="option">
+              <input
+                type="radio"
+                id="graph-opt"
+                name="mode"
+                value="graph"
+              />
+              <label for="graph-opt">
+                <strong>Graphendarstellung</strong>
+                <span class="option-description">Visualisierung der Funktion</span>
+              </label>
+            </div>
+          </fieldset>
 
-      <div
+          <!-- Aktionsbuttons -->
+          <div class="btn-row">
+            <button
+              id="calc-btn"
+              type="button"
+              class="btn btn-primary"
+              aria-label="Funktion berechnen"
+            >
+              Berechnen
+            </button>
+            <button
+              id="reset-btn"
+              type="button"
+              class="btn btn-secondary"
+              aria-label="Eingabe zurücksetzen"
+            >
+              Zurücksetzen
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Ausgabebereich -->
+      <section
         id="output"
         class="result"
+        role="region"
         aria-live="polite"
+        aria-label="Berechnungsergebnisse"
         style="display: none"
-      ></div>
+      ></section>
+
     </main>
+
+    <!-- ========================================
+         FOOTER
+         ======================================== -->
+    <footer class="container">
+      <p class="footer-text">
+        <strong>Tipp:</strong> Verwenden Sie die Enter-Taste für schnellere Berechnungen
+      </p>
+    </footer>
+
   </body>
 </html>
