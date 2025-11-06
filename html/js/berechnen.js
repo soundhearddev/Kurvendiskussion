@@ -556,6 +556,13 @@ function displayAnalysisData(analysisData) {
  * Zeigt die Graphendaten an
  * @param {Object} graphData - Die Graphendaten
  */
+
+
+
+
+
+
+
 function displayGraphData(graphData) {
     let html = `
         <div class="graph-container">
@@ -564,13 +571,11 @@ function displayGraphData(graphData) {
             <div class="graph-info">
                 <p><strong>Funktion:</strong> f(x) = ${graphData.function}</p>
                 <p><strong>X-Bereich:</strong> [${graphData.xRange[0]}, ${graphData.xRange[1]}]</p>
-                <p><strong>Datenpunkte:</strong> ${graphData.dataPoints.length}</p>
             </div>
             
-            <div class="graph-placeholder">
-                <p>Graph-Visualisierung</p>
-                <p class="detail">Hier würde der Graph gezeichnet werden</p>
-                <p class="detail">${graphData.dataPoints.length} Punkte berechnet</p>
+            <div class="graph-view">
+                <canvas id="graphCanvas" width="800" height="500"></canvas>
+                <p class="graph-help">Benutzen Sie das Mausrad zum Zoomen und ziehen Sie zum Verschieben</p>
             </div>
         </div>
     `;
@@ -578,7 +583,104 @@ function displayGraphData(graphData) {
     elements.output.innerHTML = html;
     elements.output.style.display = 'block';
     showLoading(false);
+
+    // Graph-Funktionalität initialisieren
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let scaleX = 50, scaleY = 50, offsetX = 0, offsetY = 0;
+    let isDragging = false, dragStart = {x:0, y:0};
+    
+    // Funktion zum Umrechnen der Koordinaten
+    function toCanvasX(x){ return canvas.width/2 + x*scaleX + offsetX; }
+    function toCanvasY(y){ return canvas.height/2 - y*scaleY + offsetY; }
+    function toMathX(px){ return (px - canvas.width/2 - offsetX)/scaleX; }
+
+    // Graph zeichnen
+    function drawGraph(){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+
+        // Achsen zeichnen
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, toCanvasY(0));
+        ctx.lineTo(canvas.width, toCanvasY(0));
+        ctx.moveTo(toCanvasX(0), 0);
+        ctx.lineTo(toCanvasX(0), canvas.height);
+        ctx.stroke();
+
+        // Gitterlinien
+        ctx.strokeStyle = "#eee";
+        ctx.lineWidth = 1;
+        for(let i=-20; i<=20; i++){
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(i), 0);
+            ctx.lineTo(toCanvasX(i), canvas.height);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, toCanvasY(i));
+            ctx.lineTo(canvas.width, toCanvasY(i));
+            ctx.stroke();
+        }
+
+        // Funktion zeichnen
+        ctx.strokeStyle = "#007bff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        let first = true;
+        for(let px=0; px<=canvas.width; px++){
+            const x = toMathX(px);
+            let y = evaluateFunction(graphData.cleanedFunction, x);
+            if(y === null || !isFinite(y)) continue;
+            const py = toCanvasY(y);
+            if(first){ 
+                ctx.moveTo(px,py); 
+                first=false; 
+            } else {
+                ctx.lineTo(px,py);
+            }
+        }
+        ctx.stroke();
+    }
+
+    // Event-Listener für Interaktivität
+    canvas.addEventListener('mousedown', e => {
+        isDragging = true;
+        dragStart.x = e.offsetX;
+        dragStart.y = e.offsetY;
+    });
+
+    canvas.addEventListener('mouseup', () => isDragging = false);
+    canvas.addEventListener('mouseleave', () => isDragging = false);
+
+    canvas.addEventListener('mousemove', e => {
+        if(isDragging){
+            offsetX += e.offsetX - dragStart.x;
+            offsetY += e.offsetY - dragStart.y;
+            dragStart.x = e.offsetX;
+            dragStart.y = e.offsetY;
+            drawGraph();
+        }
+    });
+
+    canvas.addEventListener('wheel', e => {
+        e.preventDefault();
+        const zoom = e.deltaY < 0 ? 1.1 : 0.9;
+        scaleX *= zoom;
+        scaleY *= zoom;
+        drawGraph();
+    });
+
+    // Initial zeichnen
+    drawGraph();
 }
+
+
+
+
+
 
 /**
  * Zeigt oder verbirgt den Ladezustand
