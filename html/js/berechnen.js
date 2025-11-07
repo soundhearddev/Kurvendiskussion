@@ -385,20 +385,20 @@ function findInflectionPoints(func, xMin, xMax) {
  * @param {Object} parsedFunction - Das geparste Funktionsobjekt
  * @returns {Object} - Objekt mit allen Analyseergebnissen
  */
-function performCurveAnalysis(parsedFunction) {
+async function performCurveAnalysis(parsedFunction) {
     const func = parsedFunction.cleaned;
     const xMin = CONFIG.GRAPH.DEFAULT_X_MIN;
     const xMax = CONFIG.GRAPH.DEFAULT_X_MAX;
-    
+
     // Berechne alle relevanten Eigenschaften
     const zeros = findZeros(func, xMin, xMax);
     const extrema = findExtrema(func, xMin, xMax);
     const inflectionPoints = findInflectionPoints(func, xMin, xMax);
-    
+
     // Berechne y-Achsenabschnitt
     const yIntercept = evaluateFunction(func, 0);
-    
-    return {
+
+    const analysisData = {
         function: parsedFunction.original,
         cleanedFunction: func,
         domain: "ℝ (alle reellen Zahlen)",
@@ -408,7 +408,33 @@ function performCurveAnalysis(parsedFunction) {
         minima: extrema.minima,
         inflectionPoints: inflectionPoints
     };
+
+    // -------------------------
+    // Log in die Datenbank
+    // -------------------------
+    try {
+        await fetch('/log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                level: 'info',
+                message: 'Kurvendiskussion durchgeführt',
+                context: {
+                    functionInput: parsedFunction.original,
+                    zeros: zeros,
+                    maxima: extrema.maxima,
+                    minima: extrema.minima,
+                    yIntercept: yIntercept
+                }
+            })
+        });
+    } catch (err) {
+        console.error('Log konnte nicht gespeichert werden:', err);
+    }
+
+    return analysisData;
 }
+
 
 // ----------------------------------------------------------------------------
 // GRAPHENDARSTELLUNG - DATENVORBEREITUNG
@@ -738,6 +764,11 @@ elements.calcBtn.addEventListener('click', () => {
         }
     }, 300);
 });
+
+
+
+
+
 
 /**
  * Handler für den Reset-Button
