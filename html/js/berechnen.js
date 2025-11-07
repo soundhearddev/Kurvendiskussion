@@ -478,9 +478,9 @@ function prepareGraphData(parsedFunction) {
  * @param {number} num - Die zu formatierende Zahl
  * @returns {string} - Formatierte Zahl
  */
-function formatNumber(num) {
-    return num.toFixed(2);
-}
+// function formatNumber(num) {
+//     return num.toFixed(2);
+// }
 
 /**
  * Zeigt die Ergebnisse der Kurvendiskussion an
