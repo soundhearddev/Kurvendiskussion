@@ -139,3 +139,68 @@ footer {
     align-items: stretch;
   }
 }
+
+.box {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 700px;
+  margin: 40px auto;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+button {
+  background: #0ea5a4;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+button:hover {
+  background: #0d9488;
+  transform: scale(1.05);
+}
+
+<header class="navbar">
+  <img src="logo.png" alt="Logo" class="logo">
+  <nav>
+    <a href="#">Start</a>
+    <a href="#">Funktionen</a>
+    <a href="#">Kontakt</a>
+  </nav>
+</header>
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 10px 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+.logo {
+  width: 60px;
+}
+.navbar a {
+  margin-left: 20px;
+  color: #0ea5a4;
+  text-decoration: none;
+  font-weight: 600;
+}
+.navbar a:hover {
+  text-decoration: underline;
+}
+.dark {
+  background: #0f172a;
+  color: #f1f5f9;
+}
+.fade-in {
+  animation: fade 1s ease forwards;
+}
+@keyframes fade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
