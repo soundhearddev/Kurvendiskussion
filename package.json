@@ -1,0 +1,14 @@
+{
+  "name": "kurvendiskussion-logserver",
+  "version": "1.0.0",
+  "description": "Simple log endpoint that writes to MySQL for Kurvendiskussion project",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "mysql2": "^3.3.1"
+  }
+}

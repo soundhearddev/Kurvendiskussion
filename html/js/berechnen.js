@@ -44,7 +44,9 @@ const CONFIG = {
     }
     ,
     // Falls true: sendet Logs an '/log'. Setze auf false um Netzwerk-404s lokal zu vermeiden.
-    LOGGING_ENABLED: false
+    LOGGING_ENABLED: false,
+    // Log-Endpoint (Node/Express server). Beispiel: 'http://localhost:3000/log'
+    LOG_ENDPOINT: 'http://localhost:3000/log'
 };
 
 // ----------------------------------------------------------------------------
@@ -417,7 +419,7 @@ async function performCurveAnalysis(parsedFunction) {
     // -------------------------
     if (CONFIG.LOGGING_ENABLED) {
         try {
-            const res = await fetch('/log', {
+            const res = await fetch(CONFIG.LOG_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
