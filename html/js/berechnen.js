@@ -42,6 +42,9 @@ const CONFIG = {
         ZERO_THRESHOLD: 0.001,    // Schwellwert für Nullstellen
         DERIVATIVE_THRESHOLD: 0.05 // Schwellwert für kritische Punkte
     }
+    ,
+    // Falls true: sendet Logs an '/log'. Setze auf false um Netzwerk-404s lokal zu vermeiden.
+    LOGGING_ENABLED: false
 };
 
 // ----------------------------------------------------------------------------
@@ -412,24 +415,30 @@ async function performCurveAnalysis(parsedFunction) {
     // -------------------------
     // Log in die Datenbank
     // -------------------------
-    try {
-        await fetch('/log', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                level: 'info',
-                message: 'Kurvendiskussion durchgeführt',
-                context: {
-                    functionInput: parsedFunction.original,
-                    zeros: zeros,
-                    maxima: extrema.maxima,
-                    minima: extrema.minima,
-                    yIntercept: yIntercept
-                }
-            })
-        });
-    } catch (err) {
-        console.error('Log konnte nicht gespeichert werden:', err);
+    if (CONFIG.LOGGING_ENABLED) {
+        try {
+            const res = await fetch('/log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    level: 'info',
+                    message: 'Kurvendiskussion durchgeführt',
+                    context: {
+                        functionInput: parsedFunction.original,
+                        zeros: zeros,
+                        maxima: extrema.maxima,
+                        minima: extrema.minima,
+                        yIntercept: yIntercept
+                    }
+                })
+            });
+
+            if (!res.ok) {
+                console.warn('Log endpoint returned non-ok status:', res.status);
+            }
+        } catch (err) {
+            console.error('Log konnte nicht gespeichert werden:', err);
+        }
     }
 
     return analysisData;
@@ -472,15 +481,18 @@ function prepareGraphData(parsedFunction) {
 // ----------------------------------------------------------------------------
 // AUSGABE UND DARSTELLUNG
 // ----------------------------------------------------------------------------
+//!FUNKTIONIERT NCIHT RICHTIG
 
 /**
  * Formatiert eine Zahl für die Anzeige (2 Dezimalstellen)
  * @param {number} num - Die zu formatierende Zahl
  * @returns {string} - Formatierte Zahl
  */
-// function formatNumber(num) {
-//     return num.toFixed(2);
-// }
+function formatNumber(num) {
+    if (num === null || num === undefined || !isFinite(num)) return 'n/a';
+    // Zeige mit 2 Dezimalstellen; entferne unnötige Nachkommastellen falls gewünscht
+    return Number(num).toFixed(2);
+}
 
 /**
  * Zeigt die Ergebnisse der Kurvendiskussion an
@@ -758,9 +770,20 @@ elements.calcBtn.addEventListener('click', () => {
             const graphData = prepareGraphData(parsedFunction);
             displayGraphData(graphData);
         } else {
-            // Kurvendiskussion-Modus
-            const analysisData = performCurveAnalysis(parsedFunction);
-            displayAnalysisData(analysisData);
+            // Kurvendiskussion-Modus (performCurveAnalysis ist async)
+            performCurveAnalysis(parsedFunction)
+                .then(displayAnalysisData)
+                .catch(err => {
+                    console.error('Fehler bei Kurvendiskussion:', err);
+                    elements.output.innerHTML = `
+                        <div class="error-message">
+                            <h3>Fehler</h3>
+                            <p>Bei der Berechnung ist ein Fehler aufgetreten.</p>
+                        </div>
+                    `;
+                    elements.output.style.display = 'block';
+                    showLoading(false);
+                });
         }
     }, 300);
 });
