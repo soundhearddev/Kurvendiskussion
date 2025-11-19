@@ -11,7 +11,18 @@ ini_set('display_errors', 1);
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
-header("Content-Type: application/json");
+header('Content-Type: application/json; charset=utf-8');
+
+// JSON vom Request-Body einlesen
+$input = file_get_contents("php://input");
+$data = json_decode($input, true);
+
+// Fehler prüfen
+if ($data === null) {
+    http_response_code(400);
+    echo json_encode(["error" => "Invalid JSON"]);
+    exit;
+}
 
 // Preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
