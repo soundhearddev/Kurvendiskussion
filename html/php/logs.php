@@ -2,6 +2,11 @@
 // ======================================================
 // logs.php - Empfängt JSON-Logs und speichert in MariaDB
 // ======================================================
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+
+
 
 // Zeitzone setzen
 date_default_timezone_set('Europe/Berlin');
@@ -22,11 +27,23 @@ if ($DEBUG) {
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
-header('Content-Type: application/json; charset=utf-8');
+header("Content-Type: application/json");
 
 // OPTIONS-Request (Preflight) behandeln
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
+    exit;
+}
+
+$raw = file_get_contents("php://input");
+$data = json_decode($raw, true);
+
+
+
+
+if ($data === null) {
+    http_response_code(400);
+    echo json_encode(["error" => "Ungültiges JSON"]);
     exit;
 }
 
