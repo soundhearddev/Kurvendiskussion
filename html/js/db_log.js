@@ -15,7 +15,7 @@
                 context: context || {},
                 timestamp: new Date().toISOString()
             };
-            const res = await fetch('/log.php', {
+            const res = await fetch('php/logs.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
