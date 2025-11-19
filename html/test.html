@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Logger Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .test-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .test-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-debug { background: #6c757d; }
+        .btn-info { background: #17a2b8; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn-error { background: #dc3545; }
+        .btn-critical { background: #721c24; }
+        .btn-action { background: #28a745; }
+
+        .console-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .console-output .log-entry {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-left: 3px solid #667eea;
+            padding-left: 10px;
+        }
+
+        .console-output .success {
+            border-left-color: #28a745;
+            color: #4ade80;
+        }
+
+        .console-output .error {
+            border-left-color: #dc3545;
+            color: #f87171;
+        }
+
+        .status {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .status-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗄️ Database Logger Test</h1>
+        <p class="subtitle">Teste das Logging-System mit MariaDB Backend</p>
+
+        <div class="test-section">
+            <h2>📝 Log-Level testen</h2>
+            <div class="button-group">
+                <button class="btn-debug" onclick="testDebug()">Debug Log</button>
+                <button class="btn-info" onclick="testInfo()">Info Log</button>
+                <button class="btn-warning" onclick="testWarning()">Warning Log</button>
+                <button class="btn-error" onclick="testError()">Error Log</button>
+                <button class="btn-critical" onclick="testCritical()">Critical Log</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>⚙️ Funktions-Tests</h2>
+            <div class="button-group">
+                <button class="btn-action" onclick="testBerechnung()">Berechnung starten</button>
+                <button class="btn-action" onclick="testFehler()">Fehler simulieren</button>
+                <button class="btn-action" onclick="testMehrfach()">10x Logs senden</button>
+                <button class="btn-action" onclick="checkQueue()">Queue Status</button>
+            </div>
+        </div>
+
+        <div class="status">
+            <div class="status-item">
+                <span class="status-label">Backend Endpoint:</span>
+                <span class="status-value" id="endpoint">php/logs.php</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Status:</span>
+                <span class="status-value" id="status">
+                    <span class="badge badge-success">Bereit</span>
+                </span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Warteschlange:</span>
+                <span class="status-value" id="queue">0 ausstehend</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Gesendete Logs:</span>
+                <span class="status-value" id="counter">0</span>
+            </div>
+        </div>
+
+        <div class="console-output" id="console">
+            <div class="log-entry">System bereit. Klicke auf einen Button zum Testen...</div>
+        </div>
+    </div>
+
+    <script src="db_log.js"></script>
+    <script>
+        let logCounter = 0;
+
+        function addToConsole(message, type = 'info') {
+            const console = document.getElementById('console');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString('de-DE');
+            entry.textContent = `[${timestamp}] ${message}`;
+            console.appendChild(entry);
+            console.scrollTop = console.scrollHeight;
+
+            // Counter erhöhen
+            if (type === 'success') {
+                logCounter++;
+                document.getElementById('counter').textContent = logCounter;
+            }
+        }
+
+        async function testDebug() {
+            addToConsole('Sende DEBUG Log...', 'info');
+            const success = await dbLogger.debug('Debug-Nachricht für Entwicklung', 'testDebug', 'test');
+            addToConsole(success ? '✓ DEBUG Log gespeichert' : '✗ DEBUG Log fehlgeschlagen', success ? 'success' : 'error');
+        }
+
+        async function testInfo() {
+            addToConsole('Sende INFO Log...', 'info');
+            const success = await dbLogger.info('Informations-Nachricht', 'testInfo', 'test');
+            addToConsole(success ? '✓ INFO Log gespeichert' : '✗ INFO Log fehlgeschlagen', success ? 'success' : 'error');
+        }
+
+        async function testWarning() {
+            addToConsole('Sende WARNING Log...', 'info');
+            const success = await dbLogger.warning('Warnung: Etwas könnte problematisch sein', 'testWarning', 'test');
+            addToConsole(success ? '✓ WARNING Log gespeichert' : '✗ WARNING Log fehlgeschlagen', success ? 'success' : 'error');
+        }
+
+        async function testError() {
+            addToConsole('Sende ERROR Log...', 'info');
+            const success = await dbLogger.error('Fehler aufgetreten!', 'testError', 'test');
+            addToConsole(success ? '✓ ERROR Log gespeichert' : '✗ ERROR Log fehlgeschlagen', success ? 'success' : 'error');
+        }
+
+        async function testCritical() {
+            addToConsole('Sende CRITICAL Log...', 'info');
+            const success = await dbLogger.critical('KRITISCHER FEHLER - System instabil', 'testCritical', 'test');
+            addToConsole(success ? '✓ CRITICAL Log gespeichert' : '✗ CRITICAL Log fehlgeschlagen', success ? 'success' : 'error');
+        }
+
+        async function testBerechnung() {
+            addToConsole('Starte Berechnung...', 'info');
+            await dbLogger.info('Berechnung gestartet', 'testBerechnung', 'calculation');
+            
+            // Simuliere Berechnung
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await dbLogger.info('Berechnung abgeschlossen', 'testBerechnung', 'calculation');
+            addToConsole('✓ Berechnungs-Logs gespeichert', 'success');
+        }
+
+        async function testFehler() {
+            addToConsole('Simuliere Fehler...', 'info');
+            try {
+                // Simuliere Fehler
+                throw new Error('Simulierter Testfehler');
+            } catch (error) {
+                await dbLogger.error(`Fehler abgefangen: ${error.message}`, 'testFehler', 'error_handling');
+                addToConsole('✓ Fehler-Log gespeichert', 'success');
+            }
+        }
+
+        async function testMehrfach() {
+            addToConsole('Sende 10 Logs...', 'info');
+            for (let i = 1; i <= 10; i++) {
+                await dbLogger.info(`Mehrfach-Test Log #${i}`, 'testMehrfach', 'batch');
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            addToConsole('✓ 10 Logs gesendet', 'success');
+        }
+
+        function checkQueue() {
+            const status = dbLogger.getQueueStatus();
+            addToConsole(`Queue Status: ${status.pending} ausstehend, ${status.isProcessing ? 'wird verarbeitet' : 'inaktiv'}`, 'info');
+            document.getElementById('queue').textContent = `${status.pending} ausstehend`;
+        }
+
+        // Status aktualisieren
+        setInterval(() => {
+            const status = dbLogger.getQueueStatus();
+            document.getElementById('queue').textContent = `${status.pending} ausstehend`;
+            
+            if (status.pending > 0) {
+                document.getElementById('status').innerHTML = '<span class="badge badge-warning">Warteschlange aktiv</span>';
+            } else {
+                document.getElementById('status').innerHTML = '<span class="badge badge-success">Bereit</span>';
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
