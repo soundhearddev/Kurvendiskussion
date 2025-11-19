@@ -1,26 +1,54 @@
+/* =======================================
+   GLOBAL SETTINGS
+======================================= */
 :root {
-  font-family: system-ui, Segoe UI, Roboto, "Helvetica Neue", Arial;
-  color: #1f2937;
+  --bg-light: #f8fafc;
+  --bg-card: #ffffff;
+  --text-light: #1f2937;
+  --border-light: #d1d5db;
+
+  /* Main accent */
+  --accent: #0ea5a4;
+  --accent-dark: #0b7f7e;
+
+  /* Button Colors */
+  --btn-primary: #0ea5a4;
+  --btn-primary-hover: #0b7f7e;
+  --btn-reset: #b01a56;
+
+  /* Darkmode */
+  --bg-dark: #0f172a;
+  --bg-dark-card: #1e293b;
+  --text-dark: #e2e8f0;
+  --border-dark: #334155;
 }
 
 body {
   margin: 0;
   padding: 32px;
-  background: #f8fafc;
+  background: var(--bg-light);
+  color: var(--text-light);
+  font-family: system-ui, Segoe UI, Roboto, "Helvetica Neue", Arial;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 .container {
   max-width: 760px;
   margin: 0 auto;
-  background: #fff;
+  background: var(--bg-card);
   padding: 24px;
   border-radius: 12px;
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
+/* =======================================
+   TEXT STYLES
+======================================= */
 h1 {
-  font-size: 20px;
-  margin: 0 0 14px;
+  font-size: 22px;
+  margin: 0 0 18px;
+  font-weight: 700;
 }
 
 label {
@@ -29,26 +57,37 @@ label {
   margin-bottom: 6px;
 }
 
-.input-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
+/* =======================================
+   INPUTS
+======================================= */
 input[type="text"] {
-  flex: 1;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   font-size: 15px;
+  background: #fff;
+  transition: 0.25s;
 }
 
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 5px rgba(14, 165, 164, 0.4);
+}
+
+/* =======================================
+   HELP TEXT
+======================================= */
 .help {
   font-size: 13px;
-  color: #6b7280;
+  color: #475569;
   margin-top: 6px;
 }
 
+/* =======================================
+   LOADING SECTION
+======================================= */
 .loading {
   display: flex;
   align-items: center;
@@ -57,21 +96,15 @@ input[type="text"] {
   color: #6b7280;
 }
 
-
 canvas { 
   border: 1px solid #ccc; 
   display: block; 
   margin-top: 20px; 
 }
 
-
-
-.loading svg {
-  width: 28px;
-  height: 28px;
-  opacity: 0.95;
-}
-
+/* =======================================
+   OPTION BOXES
+======================================= */
 .options {
   margin-top: 18px;
   padding: 14px;
@@ -79,43 +112,52 @@ canvas {
   background: #f1f5f9;
 }
 
-.option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.btn-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-top: 14px;
-}
-
-.bild {
-  display: block;
-
-  border-radius: 50%;
-  margin-bottom: 16px;
-}
-
-
+/* =======================================
+   BUTTONS (NEU & SCHÖN)
+======================================= */
 button {
-  background: #0ea5a4;
-  color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
   border: none;
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-weight: 600;
   cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background 0.25s, transform 0.15s, box-shadow 0.25s;
+}
+
+/* Primärer Button */
+.berechnen {
+  background: var(--btn-primary);
+  color: white;
+}
+
+.berechnen:hover {
+  background: var(--btn-primary-hover);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Reset Button */
+.reset-btn { 
+  background: var(--btn-reset);
+  color: white;
+}
+
+.reset-btn:hover {
+  background: #8a1443;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
 
+/* =======================================
+   FOOTER
+======================================= */
 footer {
   margin-top: 18px;
   font-size: 13px;
@@ -124,6 +166,9 @@ footer {
   gap: 8px;
 }
 
+/* =======================================
+   RESULT BOX
+======================================= */
 .result {
   margin-top: 16px;
   padding: 12px;
@@ -132,74 +177,82 @@ footer {
   border: 1px solid #e6eef0;
 }
 
-/* einfache responsive Anpassung */
-@media (max-width: 520px) {
-  .input-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
-.box {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  max-width: 700px;
-  margin: 40px auto;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-}
-
-button {
-  background: #0ea5a4;
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-button:hover {
-  background: #0d9488;
-  transform: scale(1.05);
-}
-
-<header class="navbar">
-  <img src="logo.png" alt="Logo" class="logo">
-  <nav>
-    <a href="#">Start</a>
-    <a href="#">Funktionen</a>
-    <a href="#">Kontakt</a>
-  </nav>
-</header>
-
+/* =======================================
+   NAVIGATION
+======================================= */
 .navbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   background: white;
   padding: 10px 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
 }
-.logo {
-  width: 60px;
-}
+
 .navbar a {
   margin-left: 20px;
-  color: #0ea5a4;
+  color: var(--accent);
   text-decoration: none;
   font-weight: 600;
 }
+
 .navbar a:hover {
   text-decoration: underline;
 }
-.dark {
-  background: #0f172a;
-  color: #f1f5f9;
+
+/* =======================================
+   DARKMODE (ÜBERARBEITET)
+======================================= */
+body.dark {
+  background: var(--bg-dark);
+  color: var(--text-dark);
 }
+
+body.dark .container {
+  background: var(--bg-dark-card);
+  color: var(--text-dark);
+}
+
+body.dark input[type="text"] {
+  background: #0f172a;
+  border: 1px solid var(--border-dark);
+  color: var(--text-dark);
+}
+
+body.dark .result {
+  background: var(--bg-dark-card);
+  border-color: var(--border-dark);
+}
+
+body.dark .navbar {
+  background: var(--bg-dark-card);
+  box-shadow: 0 2px 10px rgba(255,255,255,0.05);
+}
+
+body.dark canvas {
+  background: #1e293b;
+}
+
+/* Darkmode Buttons */
+body.dark button {
+  background: #1e293b;
+  color: var(--text-dark);
+  border: 1px solid var(--border-dark);
+}
+
+body.dark button:hover {
+  background: #334155;
+  box-shadow: 0 4px 12px rgba(255,255,255,0.08);
+}
+
+/* =======================================
+   ANIMATION
+======================================= */
 .fade-in {
   animation: fade 1s ease forwards;
 }
+
 @keyframes fade {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
