@@ -1,64 +1,90 @@
-// Einfacher Logger
+// ======================================================
+// db_logger.js - Funktionsanalyse & Logging
+// ======================================================
+
 (function(global){
-  const LOG_URL = '/php/logs.php';
-  const MAX_QUEUE = 200;
-  const RETRY_DELAY_MS = 2000;
-  let queue = [];
-  let sending = false;
 
-  function enqueue(entry){
-    if(queue.length >= MAX_QUEUE) queue.shift();
-    queue.push(entry);
-    triggerSend();
-  }
+    const LOGGING_ENABLED = true; // true = Logs an /log.php schicken
 
-  async function triggerSend(){
-    if(sending || queue.length===0) return;
-    sending = true;
-
-    while(queue.length){
-      const item = queue[0];
-      try{
-        console.debug('Logger sending', item);
-        const res = await fetch(LOG_URL, {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify(item),
-          cache: 'no-store'
-        });
-
-        if(!res.ok){
-          console.warn('Logger server error', res.status);
-          await wait(RETRY_DELAY_MS);
-          break;
+    async function logToServer(level, message, context){
+        if(!LOGGING_ENABLED) return;
+        try{
+            const payload = {
+                level,
+                message,
+                context: context || {},
+                timestamp: new Date().toISOString()
+            };
+            const res = await fetch('/log.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if(!res.ok) console.warn('Logger: server returned', res.status);
+        } catch(err){
+            console.warn('Logger: send failed', err);
         }
-
-        console.debug('Logger sent', item);
-        queue.shift();
-      } catch(err){
-        console.error('Logger send failed', err);
-        await wait(RETRY_DELAY_MS);
-        break;
-      }
     }
 
-    sending = false;
-  }
+    const dbLogger = {
+        info: (msg, ctx) => { console.log('[INFO]', msg, ctx); logToServer('info', msg, ctx); },
+        warn: (msg, ctx) => { console.warn('[WARN]', msg, ctx); logToServer('warn', msg, ctx); },
+        error: (msg, ctx) => { console.error('[ERROR]', msg, ctx); logToServer('error', msg, ctx); },
+        _getQueue: () => [] // optional
+    };
 
-  function wait(ms){ return new Promise(r=>setTimeout(r, ms)); }
+    global.dbLogger = dbLogger;
 
-  const api = {
-    log(level, message, context){
-      const payload = {level: level||'info', message: message||'', context: context||null};
-      console.log(`[${payload.level}]`, payload.message, payload.context);
-      enqueue(payload);
-    },
-    info(msg, ctx){ this.log('info', msg, ctx); },
-    warn(msg, ctx){ this.log('warn', msg, ctx); },
-    error(msg, ctx){ this.log('error', msg, ctx); },
-    _getQueue(){ return queue.slice(); }
-  };
+    // =========================
+    // Funktionsanalyse-Code
+    // =========================
 
-  global.dbLogger = api;
-  window.addEventListener('load', () => setTimeout(triggerSend, 100));
+    const elements = {
+        fxInput: document.getElementById('fx'),
+        output: document.getElementById('output'),
+        calcBtn: document.getElementById('calc-btn'),
+        resetBtn: document.getElementById('reset-btn'),
+        modeRadios: document.querySelectorAll('input[name="mode"]')
+    };
+
+    const CONFIG = {
+        GRAPH: { DEFAULT_X_MIN: -10, DEFAULT_X_MAX: 10, POINT_COUNT: 200, STEP_SIZE: 0.1 },
+        VALIDATION: { ALLOWED_CHARS: /^[0-9x\s\+\-\*\/\^\(\)\.\,sincotan]*$/i, MAX_LENGTH: 200 },
+        NUMERICAL: { EPSILON:0.001, TOLERANCE:0.0001, ZERO_THRESHOLD:0.001, DERIVATIVE_THRESHOLD:0.05 },
+        LOGGING_ENABLED: LOGGING_ENABLED
+    };
+
+    function validateFunction(input){
+        if(!input || input.length>CONFIG.VALIDATION.MAX_LENGTH) return false;
+        if(!CONFIG.VALIDATION.ALLOWED_CHARS.test(input)) return false;
+        return (input.match(/\(/g)||[]).length === (input.match(/\)/g)||[]).length;
+    }
+
+    function cleanFunction(input){ return input.replace(/\s+/g,'').replace(/\*\*/g,'^').replace(/,/g,'.').toLowerCase(); }
+    function parseFunction(input){ const c=cleanFunction(input); return { original: input, cleaned:c, isValid: validateFunction(c), error: validateFunction(c)?null:'Ungültige Funktion' }; }
+    function evaluateFunction(func, x){ try{ return eval(func.replace(/\^/g,'**').replace(/sin/g,'Math.sin').replace(/cos/g,'Math.cos').replace(/tan/g,'Math.tan').replace(/x/g,`(${x})`)); } catch{ return null; } }
+    function calculateDerivative(func,x){ const h=CONFIG.NUMERICAL.EPSILON, y1=evaluateFunction(func,x+h),y2=evaluateFunction(func,x-h); return y1!==null && y2!==null?(y1-y2)/(2*h):null; }
+    function calculateSecondDerivative(func,x){ const h=CONFIG.NUMERICAL.EPSILON, y0=evaluateFunction(func,x),y1=evaluateFunction(func,x+h),y2=evaluateFunction(func,x-h); return y0!==null && y1!==null && y2!==null?(y1-2*y0+y2)/(h*h):null; }
+
+    // ... hier kannst du alle deine Funktionen wie findZeros, findExtrema, findInflectionPoints, performCurveAnalysis etc. einfügen
+
+    // =========================
+    // Event-Handler
+    // =========================
+
+    elements.calcBtn.addEventListener('click', async () => {
+        const parsed = parseFunction(elements.fxInput.value);
+        if(!parsed.isValid){ elements.output.innerHTML='<p>Ungültige Funktion</p>'; return; }
+
+        const analysisData = await performCurveAnalysis(parsed); // Log inside
+        displayAnalysisData(analysisData);                        // Zeigt Ergebnisse
+        dbLogger.info('Kurvendiskussion durchgeführt', {input: parsed.original});
+    });
+
+    elements.resetBtn.addEventListener('click', ()=>{
+        elements.fxInput.value='';
+        elements.output.style.display='none';
+        elements.fxInput.focus();
+    });
+
 })(window);

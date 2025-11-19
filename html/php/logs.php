@@ -1,5 +1,6 @@
 <?php
 // log.php - empfängt JSON-Logs und schreibt sie in MariaDB
+date_default_timezone_set('Europe/Berlin'); // optional, für deutsche Zeit
 
 // DB-Zugangsdaten
 $dbHost = 'localhost';
