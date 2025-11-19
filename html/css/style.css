@@ -132,7 +132,7 @@ button {
 }
 
 .berechnen:hover {
-  background: var(--btn-primary-hover);
+  background:#0b8c8c;
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
@@ -202,7 +202,7 @@ footer {
 }
 
 /* =======================================
-   DARKMODE (ÜBERARBEITET)
+   DARKMODE 
 ======================================= */
 body.dark {
   background: var(--bg-dark);
@@ -234,17 +234,6 @@ body.dark canvas {
   background: #1e293b;
 }
 
-/* Darkmode Buttons */
-body.dark button {
-  background: #1e293b;
-  color: var(--text-dark);
-  border: 1px solid var(--border-dark);
-}
-
-body.dark button:hover {
-  background: #334155;
-  box-shadow: 0 4px 12px rgba(255,255,255,0.08);
-}
 
 /* =======================================
    ANIMATION
