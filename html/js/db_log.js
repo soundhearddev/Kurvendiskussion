@@ -6,7 +6,7 @@ function logToServer(level, message, func = "", input = "") {
     data.append("function", func);
     data.append("input", input);
 
-    fetch("http://localhost/php/logs.php", {
+    fetch("php/logs.php", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: data
