@@ -1,91 +1,82 @@
-// Simple Express server that accepts logs and writes them to MySQL
-// Usage: set env vars DB_HOST, DB_USER, DB_PASSWORD, DB_NAME (optional DB_PORT and PORT)
+// client-side logger: sendet Logs an den Node/Express-Logserver
+// Verwendung: window.dbLogger.log('info', 'Nachricht', {key: 'value'})
+(function(global){
+  const LOG_PATH = '/log'; // relativ; Apache sollte /log an den Node-Server proxien
+  const MAX_QUEUE = 200;
+  const RETRY_DELAY_MS = 2000;
 
-const express = require('express');
-const mysql = require('mysql2/promise');
-const cors = require('cors');
+  let queue = [];
+  let sending = false;
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-const {
-  DB_HOST = 'localhost',
-  DB_USER = 'nodeapp',
-  DB_PASSWORD = '1234',
-  DB_NAME = 'db',
-  DB_PORT = 3306,
-  PORT = 3000
-} = process.env;
-
-async function createPool() {
-  try {
-    const pool = mysql.createPool({
-      host: DB_HOST,
-      user: DB_USER,
-      password: DB_PASSWORD,
-      database: DB_NAME,
-      port: Number(DB_PORT),
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0
-    });
-
-    // quick test
-    await pool.query('SELECT 1');
-    console.log('Connected to MySQL at', DB_HOST);
-    return pool;
-  } catch (err) {
-    console.error('Could not connect to MySQL:', err.message || err);
-    process.exit(1);
-  }
-}
-
-let pool;
-createPool().then(p => { pool = p; });
-
-// Ensure the logs table exists (best-effort)
-async function ensureTable() {
-  try {
-    await pool.execute(`
-      CREATE TABLE IF NOT EXISTS logs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        level VARCHAR(32),
-        message TEXT,
-        context JSON,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-    console.log('Ensured logs table exists');
-  } catch (err) {
-    console.warn('Could not ensure logs table:', err.message || err);
-  }
-}
-
-app.post('/log', async (req, res) => {
-  const payload = req.body || {};
-  const { level = 'info', message = null, context = null } = payload;
-
-  if (!pool) {
-    return res.status(500).json({ error: 'db not ready' });
+  function enqueue(entry){
+    if(queue.length >= MAX_QUEUE) queue.shift();
+    queue.push(entry);
+    triggerSend();
   }
 
-  try {
-    await ensureTable();
-    const [result] = await pool.execute(
-      'INSERT INTO logs (level, message, context) VALUES (?, ?, ?)',
-      [level, message, JSON.stringify(context)]
-    );
+  async function triggerSend(){
+    if(sending) return;
+    if(queue.length === 0) return;
+    sending = true;
 
-    res.json({ ok: true, id: result.insertId });
-  } catch (err) {
-    console.error('DB insert error:', err);
-    res.status(500).json({ error: 'db error' });
+    while(queue.length){
+      const item = queue[0];
+      try{
+        const res = await fetch(LOG_PATH, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item),
+          cache: 'no-store'
+        });
+
+        if(!res.ok){
+          // Server antwortet mit Fehlercode -> stop & retry später
+          console.warn('Logger: server error', res.status);
+          await wait(RETRY_DELAY_MS);
+          break;
+        }
+
+        // erfolgreich gesendet -> aus der Queue entfernen
+        queue.shift();
+      } catch(err){
+        // Netzwerkfehler oder CORS/proxy problem
+        console.warn('Logger: send failed, retrying', err && err.message);
+        await wait(RETRY_DELAY_MS);
+        break;
+      }
+    }
+
+    sending = false;
   }
-});
 
-app.get('/', (req, res) => res.json({ ok: true, msg: 'Log server running' }));
+  function wait(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
-app.listen(Number(PORT), () => {
-  console.log(`Log server listening on port ${PORT}`);
-});
+  function validatePayload(level, message, context){
+    return {
+      level: String(level || 'info'),
+      message: message == null ? '' : String(message),
+      context: context || null
+    };
+  }
+
+  // öffentliche API
+  const api = {
+    log(level, message, context){
+      const payload = validatePayload(level, message, context);
+      // lokal in console spiegeln
+      try{ console.log(`[${payload.level}]`, payload.message, payload.context); } catch(e){}
+      enqueue(payload);
+    },
+    info(msg, ctx){ this.log('info', msg, ctx); },
+    warn(msg, ctx){ this.log('warn', msg, ctx); },
+    error(msg, ctx){ this.log('error', msg, ctx); },
+    _getQueue(){ return queue.slice(); } // debug
+  };
+
+  // attach
+  global.dbLogger = api;
+
+  // versuche beim Laden, vorhandene Warteschlange zu senden
+  window.addEventListener('load', () => setTimeout(triggerSend, 100));
+
+})(window);
