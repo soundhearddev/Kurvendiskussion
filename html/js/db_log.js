@@ -11,9 +11,9 @@ app.use(express.json());
 
 const {
   DB_HOST = 'localhost',
-  DB_USER = 'root',
-  DB_PASSWORD = '',
-  DB_NAME = 'kurvendb',
+  DB_USER = 'nodeapp',
+  DB_PASSWORD = '1234',
+  DB_NAME = 'db',
   DB_PORT = 3306,
   PORT = 3000
 } = process.env;
