@@ -1,91 +1,90 @@
-// Simple Express server that accepts logs and writes them to MySQL
-// Usage: set env vars DB_HOST, DB_USER, DB_PASSWORD, DB_NAME (optional DB_PORT and PORT)
+// ======================================================
+// db_logger.js - Funktionsanalyse & Logging
+// ======================================================
 
-const express = require('express');
-const mysql = require('mysql2/promise');
-const cors = require('cors');
+(function(global){
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+    const LOGGING_ENABLED = true; // true = Logs an /log.php schicken
 
-const {
-  DB_HOST = 'localhost',
-  DB_USER = 'root',
-  DB_PASSWORD = '',
-  DB_NAME = 'kurvendb',
-  DB_PORT = 3306,
-  PORT = 3000
-} = process.env;
+    async function logToServer(level, message, context){
+        if(!LOGGING_ENABLED) return;
+        try{
+            const payload = {
+                level,
+                message,
+                context: context || {},
+                timestamp: new Date().toISOString()
+            };
+            const res = await fetch('/log.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if(!res.ok) console.warn('Logger: server returned', res.status);
+        } catch(err){
+            console.warn('Logger: send failed', err);
+        }
+    }
 
-async function createPool() {
-  try {
-    const pool = mysql.createPool({
-      host: DB_HOST,
-      user: DB_USER,
-      password: DB_PASSWORD,
-      database: DB_NAME,
-      port: Number(DB_PORT),
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0
+    const dbLogger = {
+        info: (msg, ctx) => { console.log('[INFO]', msg, ctx); logToServer('info', msg, ctx); },
+        warn: (msg, ctx) => { console.warn('[WARN]', msg, ctx); logToServer('warn', msg, ctx); },
+        error: (msg, ctx) => { console.error('[ERROR]', msg, ctx); logToServer('error', msg, ctx); },
+        _getQueue: () => [] // optional
+    };
+
+    global.dbLogger = dbLogger;
+
+    // =========================
+    // Funktionsanalyse-Code
+    // =========================
+
+    const elements = {
+        fxInput: document.getElementById('fx'),
+        output: document.getElementById('output'),
+        calcBtn: document.getElementById('calc-btn'),
+        resetBtn: document.getElementById('reset-btn'),
+        modeRadios: document.querySelectorAll('input[name="mode"]')
+    };
+
+    const CONFIG = {
+        GRAPH: { DEFAULT_X_MIN: -10, DEFAULT_X_MAX: 10, POINT_COUNT: 200, STEP_SIZE: 0.1 },
+        VALIDATION: { ALLOWED_CHARS: /^[0-9x\s\+\-\*\/\^\(\)\.\,sincotan]*$/i, MAX_LENGTH: 200 },
+        NUMERICAL: { EPSILON:0.001, TOLERANCE:0.0001, ZERO_THRESHOLD:0.001, DERIVATIVE_THRESHOLD:0.05 },
+        LOGGING_ENABLED: LOGGING_ENABLED
+    };
+
+    function validateFunction(input){
+        if(!input || input.length>CONFIG.VALIDATION.MAX_LENGTH) return false;
+        if(!CONFIG.VALIDATION.ALLOWED_CHARS.test(input)) return false;
+        return (input.match(/\(/g)||[]).length === (input.match(/\)/g)||[]).length;
+    }
+
+    function cleanFunction(input){ return input.replace(/\s+/g,'').replace(/\*\*/g,'^').replace(/,/g,'.').toLowerCase(); }
+    function parseFunction(input){ const c=cleanFunction(input); return { original: input, cleaned:c, isValid: validateFunction(c), error: validateFunction(c)?null:'Ungültige Funktion' }; }
+    function evaluateFunction(func, x){ try{ return eval(func.replace(/\^/g,'**').replace(/sin/g,'Math.sin').replace(/cos/g,'Math.cos').replace(/tan/g,'Math.tan').replace(/x/g,`(${x})`)); } catch{ return null; } }
+    function calculateDerivative(func,x){ const h=CONFIG.NUMERICAL.EPSILON, y1=evaluateFunction(func,x+h),y2=evaluateFunction(func,x-h); return y1!==null && y2!==null?(y1-y2)/(2*h):null; }
+    function calculateSecondDerivative(func,x){ const h=CONFIG.NUMERICAL.EPSILON, y0=evaluateFunction(func,x),y1=evaluateFunction(func,x+h),y2=evaluateFunction(func,x-h); return y0!==null && y1!==null && y2!==null?(y1-2*y0+y2)/(h*h):null; }
+
+    // ... hier kannst du alle deine Funktionen wie findZeros, findExtrema, findInflectionPoints, performCurveAnalysis etc. einfügen
+
+    // =========================
+    // Event-Handler
+    // =========================
+
+    elements.calcBtn.addEventListener('click', async () => {
+        const parsed = parseFunction(elements.fxInput.value);
+        if(!parsed.isValid){ elements.output.innerHTML='<p>Ungültige Funktion</p>'; return; }
+
+        const analysisData = await performCurveAnalysis(parsed); // Log inside
+        displayAnalysisData(analysisData);                        // Zeigt Ergebnisse
+        dbLogger.info('Kurvendiskussion durchgeführt', {input: parsed.original});
     });
 
-    // quick test
-    await pool.query('SELECT 1');
-    console.log('Connected to MySQL at', DB_HOST);
-    return pool;
-  } catch (err) {
-    console.error('Could not connect to MySQL:', err.message || err);
-    process.exit(1);
-  }
-}
+    elements.resetBtn.addEventListener('click', ()=>{
+        elements.fxInput.value='';
+        elements.output.style.display='none';
+        elements.fxInput.focus();
+    });
 
-let pool;
-createPool().then(p => { pool = p; });
-
-// Ensure the logs table exists (best-effort)
-async function ensureTable() {
-  try {
-    await pool.execute(`
-      CREATE TABLE IF NOT EXISTS logs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        level VARCHAR(32),
-        message TEXT,
-        context JSON,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-    console.log('Ensured logs table exists');
-  } catch (err) {
-    console.warn('Could not ensure logs table:', err.message || err);
-  }
-}
-
-app.post('/log', async (req, res) => {
-  const payload = req.body || {};
-  const { level = 'info', message = null, context = null } = payload;
-
-  if (!pool) {
-    return res.status(500).json({ error: 'db not ready' });
-  }
-
-  try {
-    await ensureTable();
-    const [result] = await pool.execute(
-      'INSERT INTO logs (level, message, context) VALUES (?, ?, ?)',
-      [level, message, JSON.stringify(context)]
-    );
-
-    res.json({ ok: true, id: result.insertId });
-  } catch (err) {
-    console.error('DB insert error:', err);
-    res.status(500).json({ error: 'db error' });
-  }
-});
-
-app.get('/', (req, res) => res.json({ ok: true, msg: 'Log server running' }));
-
-app.listen(Number(PORT), () => {
-  console.log(`Log server listening on port ${PORT}`);
-});
+})(window);
