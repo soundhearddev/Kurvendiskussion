@@ -45,7 +45,7 @@
                 console.log('📤 Sende Log an Server:', payload);
             }
 
-            const res = await fetch('/php/logs.php', {
+            const res = await fetch('php/logs.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -404,7 +404,7 @@
 
     // ==================== INIT ====================
     
-    dbLogger.info('db_logger.js geladen', { 
+    dbLogger.info('db_log.js geladen', { 
         debug: DEBUG_MODE, 
         logging: LOGGING_ENABLED 
     });
