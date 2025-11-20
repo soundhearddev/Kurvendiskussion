@@ -1,53 +1,165 @@
 // ============================================================================
-// FUNKTIONSANALYSE - VEREINFACHT
+// FUNKTIONSANALYSE MIT DATABASE LOGGING
+// ============================================================================
+
+// Database Logger
+class DatabaseLogger {
+    constructor(endpoint = 'logs.php') {
+        this.endpoint = endpoint;
+        this.queue = [];
+        this.isProcessing = false;
+    }
+
+    async log(level, message, functionName = '', mode = '', context = {}) {
+        const logEntry = {
+            level: level.toLowerCase(),
+            message: String(message),
+            function: functionName || '',
+            mode: mode || '',
+            context: JSON.stringify(context),
+            timestamp: new Date().toISOString()
+        };
+
+        try {
+            const response = await fetch(this.endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(logEntry)
+            });
+
+            if (!response.ok) {
+                console.error('Log-Fehler:', response.status);
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Logging-Fehler:', error);
+            return false;
+        }
+    }
+
+    debug(msg, fn='', mode='', ctx={}) { return this.log('debug', msg, fn, mode, ctx); }
+    info(msg, fn='', mode='', ctx={}) { return this.log('info', msg, fn, mode, ctx); }
+    warning(msg, fn='', mode='', ctx={}) { return this.log('warning', msg, fn, mode, ctx); }
+    error(msg, fn='', mode='', ctx={}) { return this.log('error', msg, fn, mode, ctx); }
+}
+
+const dbLogger = new DatabaseLogger();
+
+// ============================================================================
+// HILFSFUNKTIONEN
 // ============================================================================
 
 const $ = id => document.getElementById(id);
-const el = { fx: $('fx'), out: $('output'), load: $('loading'), calc: $('calc-btn'), reset: $('reset-btn') };
+const el = { 
+    fx: $('fx'), 
+    out: $('output'), 
+    load: $('loading'), 
+    calc: $('calc-btn'), 
+    reset: $('reset-btn') 
+};
 
-// CONFIG
 const cfg = { 
     xMin: -10, xMax: 10, eps: 0.001, tol: 0.0001, maxLen: 200,
     allowedChars: /^[0-9x\s\+\-\*\/\^\(\)\.\,sincotan]*$/i
 };
 
+// ============================================================================
 // VALIDIERUNG & PARSING
+// ============================================================================
+
 const clean = s => s.replace(/\s+/g,'').replace(/\*\*/g,'^').replace(/,/g,'.').toLowerCase();
 const validate = s => s && s.length<=cfg.maxLen && cfg.allowedChars.test(s) && (s.match(/\(/g)||[]).length===(s.match(/\)/g)||[]).length;
-const parse = s => ({ orig: s, clean: clean(s), valid: validate(clean(s)) });
+const parse = s => {
+    const parsed = { orig: s, clean: clean(s), valid: validate(clean(s)) };
+    
+    // Logging: Funktion geparst
+    dbLogger.debug('Funktion geparst', 'parse', 'validation', {
+        original: s,
+        cleaned: parsed.clean,
+        valid: parsed.valid
+    });
+    
+    return parsed;
+};
 
+// ============================================================================
 // FUNKTION AUSWERTEN
+// ============================================================================
+
 const evalF = (f, x) => {
     try {
         const expr = f.replace(/\^/g,'**').replace(/sin/g,'Math.sin').replace(/cos/g,'Math.cos').replace(/tan/g,'Math.tan').replace(/x/g,`(${x})`);
         const r = eval(expr);
         return isFinite(r) ? r : null;
-    } catch { return null; }
+    } catch (err) {
+        dbLogger.error('Fehler bei Funktionsauswertung', 'evalF', 'calculation', {
+            function: f,
+            x: x,
+            error: err.message
+        });
+        return null;
+    }
 };
 
+// ============================================================================
 // ABLEITUNGEN
-const deriv1 = (f,x) => { const h=cfg.eps, y1=evalF(f,x+h), y2=evalF(f,x-h); return y1!==null&&y2!==null ? (y1-y2)/(2*h) : null; };
-const deriv2 = (f,x) => { const h=cfg.eps, y0=evalF(f,x), y1=evalF(f,x+h), y2=evalF(f,x-h); return y0!==null&&y1!==null&&y2!==null ? (y1-2*y0+y2)/(h*h) : null; };
+// ============================================================================
 
+const deriv1 = (f,x) => { 
+    const h=cfg.eps, y1=evalF(f,x+h), y2=evalF(f,x-h); 
+    return y1!==null&&y2!==null ? (y1-y2)/(2*h) : null; 
+};
+
+const deriv2 = (f,x) => { 
+    const h=cfg.eps, y0=evalF(f,x), y1=evalF(f,x+h), y2=evalF(f,x-h); 
+    return y0!==null&&y1!==null&&y2!==null ? (y1-2*y0+y2)/(h*h) : null; 
+};
+
+// ============================================================================
 // NULLSTELLEN
+// ============================================================================
+
 const findZeros = (f, xMin, xMax) => {
+    const startTime = performance.now();
     const zeros = [], step = 0.1;
     let prev = evalF(f, xMin);
+    
     for (let x=xMin+step; x<=xMax; x+=step) {
         const y = evalF(f, x);
         if (y!==null && prev!==null && ((prev<0&&y>0)||(prev>0&&y<0))) {
             let z = x-step/2;
-            for (let i=0; i<20; i++) { const fy=evalF(f,z), dy=deriv1(f,z); if(dy!==null&&Math.abs(dy)>0.001) z=z-fy/dy; }
+            for (let i=0; i<20; i++) { 
+                const fy=evalF(f,z), dy=deriv1(f,z); 
+                if(dy!==null&&Math.abs(dy)>0.001) z=z-fy/dy; 
+            }
             if(zeros.length===0 || Math.abs(z-zeros[zeros.length-1])>0.5) zeros.push(z);
         }
         prev = y;
     }
+    
+    const duration = performance.now() - startTime;
+    
+    // Logging: Nullstellen gefunden
+    dbLogger.info(`${zeros.length} Nullstellen gefunden`, 'findZeros', 'analysis', {
+        function: f,
+        count: zeros.length,
+        zeros: zeros.map(z => z.toFixed(4)),
+        duration_ms: duration.toFixed(2)
+    });
+    
     return zeros;
 };
 
+// ============================================================================
 // EXTREMA
+// ============================================================================
+
 const findExtrema = (f, xMin, xMax) => {
+    const startTime = performance.now();
     const maxs=[], mins=[], step=0.2;
+    
     for (let x=xMin; x<=xMax; x+=step) {
         const d1=deriv1(f,x), d2=deriv2(f,x);
         if (d1!==null && Math.abs(d1)<0.05 && d2!==null) {
@@ -58,13 +170,31 @@ const findExtrema = (f, xMin, xMax) => {
             }
         }
     }
+    
+    const duration = performance.now() - startTime;
+    
+    // Logging: Extrema gefunden
+    dbLogger.info(`${maxs.length} Hochpunkte, ${mins.length} Tiefpunkte gefunden`, 'findExtrema', 'analysis', {
+        function: f,
+        maxima: maxs.length,
+        minima: mins.length,
+        maxPoints: maxs.map(m => `(${m.x.toFixed(2)}, ${m.y.toFixed(2)})`),
+        minPoints: mins.map(m => `(${m.x.toFixed(2)}, ${m.y.toFixed(2)})`),
+        duration_ms: duration.toFixed(2)
+    });
+    
     return {maxs, mins};
 };
 
+// ============================================================================
 // WENDEPUNKTE
+// ============================================================================
+
 const findWende = (f, xMin, xMax) => {
+    const startTime = performance.now();
     const wende=[], step=0.2;
     let prev=deriv2(f,xMin);
+    
     for (let x=xMin+step; x<=xMax; x+=step) {
         const d2=deriv2(f,x);
         if (prev!==null && d2!==null && ((prev<-0.1&&d2>0.1)||(prev>0.1&&d2<-0.1))) {
@@ -73,17 +203,75 @@ const findWende = (f, xMin, xMax) => {
         }
         prev=d2;
     }
+    
+    const duration = performance.now() - startTime;
+    
+    // Logging: Wendepunkte gefunden
+    dbLogger.info(`${wende.length} Wendepunkte gefunden`, 'findWende', 'analysis', {
+        function: f,
+        count: wende.length,
+        points: wende.map(w => `(${w.x.toFixed(2)}, ${w.y.toFixed(2)})`),
+        duration_ms: duration.toFixed(2)
+    });
+    
     return wende;
 };
 
-// ANALYSE
+// ============================================================================
+// VOLLSTÄNDIGE ANALYSE
+// ============================================================================
+
 const analyze = async p => {
-    const f=p.clean, zeros=findZeros(f,cfg.xMin,cfg.xMax), ext=findExtrema(f,cfg.xMin,cfg.xMax), wende=findWende(f,cfg.xMin,cfg.xMax);
-    return { fn: p.orig, y0: evalF(f,0), zeros, maxs: ext.maxs, mins: ext.mins, wende };
+    const startTime = performance.now();
+    
+    dbLogger.info('Kurvendiskussion gestartet', 'analyze', 'analysis', {
+        function: p.orig,
+        cleaned: p.clean
+    });
+    
+    const f=p.clean;
+    const y0 = evalF(f,0);
+    const zeros = findZeros(f, cfg.xMin, cfg.xMax);
+    const ext = findExtrema(f, cfg.xMin, cfg.xMax);
+    const wende = findWende(f, cfg.xMin, cfg.xMax);
+    
+    const duration = performance.now() - startTime;
+    
+    const result = { 
+        fn: p.orig, 
+        y0, 
+        zeros, 
+        maxs: ext.maxs, 
+        mins: ext.mins, 
+        wende 
+    };
+    
+    // Logging: Vollständige Analyse abgeschlossen
+    dbLogger.info('Kurvendiskussion abgeschlossen', 'analyze', 'analysis', {
+        function: p.orig,
+        duration_ms: duration.toFixed(2),
+        y_intercept: y0 !== null ? y0.toFixed(4) : 'n/a',
+        zeros_count: zeros.length,
+        maxima_count: ext.maxs.length,
+        minima_count: ext.mins.length,
+        inflection_count: wende.length,
+        summary: {
+            zeros: zeros.map(z => z.toFixed(2)),
+            maxima: ext.maxs.map(m => `(${m.x.toFixed(2)}, ${m.y.toFixed(2)})`),
+            minima: ext.mins.map(m => `(${m.x.toFixed(2)}, ${m.y.toFixed(2)})`),
+            inflection: wende.map(w => `(${w.x.toFixed(2)}, ${w.y.toFixed(2)})`)
+        }
+    });
+    
+    return result;
 };
 
+// ============================================================================
 // ANZEIGE
+// ============================================================================
+
 const fmt = n => n===null||!isFinite(n) ? 'n/a' : n.toFixed(2);
+
 const showAnalysis = d => {
     let h = `<div class="analysis-container"><h2>Kurvendiskussion</h2><h3>f(x) = ${d.fn}</h3>`;
     h += `<h4>Y-Achse:</h4><p>f(0) = ${fmt(d.y0)}</p>`;
@@ -96,13 +284,27 @@ const showAnalysis = d => {
     h += `<h4>Wendepunkte:</h4>`;
     h += d.wende.length ? `<ul>${d.wende.map((w,i)=>`<li>W<sub>${i+1}</sub>(${fmt(w.x)} | ${fmt(w.y)})</li>`).join('')}</ul>` : '<p>Keine</p>';
     h += '</div>';
+    
     el.out.innerHTML = h;
     el.out.style.display = 'block';
     el.load.style.display = 'none';
+    
+    dbLogger.info('Ergebnisse angezeigt', 'showAnalysis', 'display', {
+        function: d.fn
+    });
 };
 
-// GRAPH
+// ============================================================================
+// GRAPHENDARSTELLUNG
+// ============================================================================
+
 const showGraph = p => {
+    const startTime = performance.now();
+    
+    dbLogger.info('Graphendarstellung gestartet', 'showGraph', 'graph', {
+        function: p.orig
+    });
+    
     el.out.innerHTML = '<canvas id="c" width="800" height="600"></canvas>';
     el.out.style.display = 'block';
     el.load.style.display = 'none';
@@ -156,24 +358,135 @@ const showGraph = p => {
         ctx.stroke();
     };
     
+    let zoomCount = 0, panCount = 0;
+    
     c.onmousedown = e => { drag=true; dx=e.offsetX; dy=e.offsetY; };
-    c.onmouseup = c.onmouseleave = () => drag=false;
-    c.onmousemove = e => { if(drag){ ox+=e.offsetX-dx; oy+=e.offsetY-dy; dx=e.offsetX; dy=e.offsetY; draw(); }};
-    c.onwheel = e => { e.preventDefault(); const z=e.deltaY<0?1.1:0.9; sx*=z; sy*=z; draw(); };
+    c.onmouseup = c.onmouseleave = () => {
+        if (drag && panCount > 0) {
+            dbLogger.debug('Graph verschoben', 'showGraph', 'interaction', {
+                function: p.orig,
+                offset_x: ox,
+                offset_y: oy
+            });
+        }
+        drag=false; 
+    };
+    c.onmousemove = e => { 
+        if(drag){ 
+            ox+=e.offsetX-dx; 
+            oy+=e.offsetY-dy; 
+            dx=e.offsetX; 
+            dy=e.offsetY; 
+            panCount++;
+            draw(); 
+        }
+    };
+    c.onwheel = e => { 
+        e.preventDefault(); 
+        const z=e.deltaY<0?1.1:0.9; 
+        sx*=z; 
+        sy*=z; 
+        zoomCount++;
+        draw(); 
+        
+        if (zoomCount % 5 === 0) {
+            dbLogger.debug('Graph gezoomt', 'showGraph', 'interaction', {
+                function: p.orig,
+                scale_x: sx.toFixed(2),
+                scale_y: sy.toFixed(2),
+                zoom_count: zoomCount
+            });
+        }
+    };
     
     draw();
+    
+    const duration = performance.now() - startTime;
+    
+    dbLogger.info('Graph gerendert', 'showGraph', 'graph', {
+        function: p.orig,
+        duration_ms: duration.toFixed(2),
+        canvas_size: `${c.width}x${c.height}`
+    });
 };
 
-// EVENTS
+// ============================================================================
+// EVENT HANDLER
+// ============================================================================
+
 el.calc.onclick = () => {
-    el.load.style.display='flex'; el.out.style.display='none';
-    const p=parse(el.fx.value);
-    if(!p.valid){ el.out.innerHTML='<p class="error">❌ Ungültige Funktion</p>'; el.out.style.display='block'; el.load.style.display='none'; return; }
-    const mode=document.querySelector('input[name="mode"]:checked')?.value||'analysis';
-    setTimeout(()=>{ mode==='graph' ? showGraph(p) : analyze(p).then(showAnalysis); }, 300);
+    el.load.style.display='flex'; 
+    el.out.style.display='none';
+    
+    const p = parse(el.fx.value);
+    
+    if(!p.valid) { 
+        el.out.innerHTML='<p class="error">❌ Ungültige Funktion</p>'; 
+        el.out.style.display='block'; 
+        el.load.style.display='none'; 
+        
+        dbLogger.warning('Ungültige Funktionseingabe', 'calc.onclick', 'validation', {
+            input: el.fx.value,
+            cleaned: p.clean
+        });
+        
+        return; 
+    }
+    
+    const mode = document.querySelector('input[name="mode"]:checked')?.value || 'analysis';
+    
+    dbLogger.info('Berechnung gestartet', 'calc.onclick', mode, {
+        function: p.orig,
+        mode: mode
+    });
+    
+    setTimeout(() => { 
+        mode === 'graph' ? showGraph(p) : analyze(p).then(showAnalysis); 
+    }, 300);
 };
 
-el.reset.onclick = () => { el.fx.value=''; el.out.style.display='none'; el.load.style.display='none'; el.fx.focus(); };
-el.fx.onkeypress = e => { if(e.key==='Enter') el.calc.click(); };
+el.reset.onclick = () => { 
+    el.fx.value=''; 
+    el.out.style.display='none'; 
+    el.load.style.display='none'; 
+    el.fx.focus(); 
+    
+    dbLogger.info('Eingabe zurückgesetzt', 'reset.onclick', 'user_action');
+};
 
-document.addEventListener('DOMContentLoaded', ()=>el.fx.focus());
+el.fx.onkeypress = e => { 
+    if(e.key==='Enter') {
+        dbLogger.debug('Enter-Taste gedrückt', 'fx.onkeypress', 'keyboard_shortcut');
+        el.calc.click(); 
+    }
+};
+
+// ============================================================================
+// INITIALISIERUNG
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    el.fx.focus();
+    
+    dbLogger.info('Seite geladen', 'DOMContentLoaded', 'page_load', {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        screenSize: `${screen.width}x${screen.height}`
+    });
+});
+
+// Globale Error-Handler
+window.addEventListener('error', (event) => {
+    dbLogger.error('Globaler Fehler', 'window.error', 'error', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno
+    });
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    dbLogger.error('Unhandled Promise Rejection', 'unhandledrejection', 'error', {
+        reason: event.reason
+    });
+});
