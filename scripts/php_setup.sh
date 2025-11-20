@@ -45,6 +45,28 @@ if [ -f /etc/phpmyadmin/apache.conf ]; then
     sudo a2enconf phpmyadmin
 fi
 
+
+echo "[*] Installation eines Themes für phpMyAdmin..."
+sudo apt install -y unzip wget
+
+
+PHPMYADMIN_THEME_DIR="/usr/share/phpmyadmin/themes/"
+THEME_NAME="BooDark"
+LINK="https://files.phpmyadmin.net/themes/boodark/1.0.0/boodark-1.0.0.zip"
+CONFIG_FILE="/etc/phpmyadmin/config.inc.php"
+
+wget -q -O /tmp/${THEME_NAME}.zip $LINK
+sudo unzip -o /tmp/${THEME_NAME}.zip -d $PHPMYADMIN_THEME_DIR
+sudo rm /tmp/${THEME_NAME}.zip
+echo "[*] Setze Standard-Theme für phpMyAdmin..."
+
+
+
+if ! grep -q "\$cfg\['ThemeDefault'\] = '${THEME_NAME}';" "$CONFIG_FILE"; then
+    echo "\$cfg['ThemeDefault'] = '${THEME_NAME}';" | sudo tee -a "$CONFIG_FILE" > /dev/null
+fi
+
+
 echo "[*] Lade Apache neu..."
 sudo systemctl reload apache2
 

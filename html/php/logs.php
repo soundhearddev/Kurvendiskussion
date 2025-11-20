@@ -54,7 +54,6 @@ try {
         mode VARCHAR(50),
         context JSON,
         timestamp DATETIME NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX(level), 
         INDEX(timestamp),
         INDEX(mode)
