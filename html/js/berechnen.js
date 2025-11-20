@@ -4,7 +4,7 @@
 
 // Database Logger
 class DatabaseLogger {
-    constructor(endpoint = 'logs.php') {
+    constructor(endpoint = '../php/logs.php') {
         this.endpoint = endpoint;
         this.queue = [];
         this.isProcessing = false;
