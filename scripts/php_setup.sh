@@ -56,7 +56,7 @@ LINK="https://files.phpmyadmin.net/themes/boodark/1.0.0/boodark-1.0.0.zip"
 CONFIG_FILE="/etc/phpmyadmin/config.inc.php"
 
 git clone https://github.com/adorade/boodark.git /tmp/boodark
-sudo mv /tmp/boodark/themes/boodark $PHPMYADMIN_THEME_DIR
+sudo mv -r /tmp/boodark/themes/boodark $PHPMYADMIN_THEME_DIR
 sudo rm -rf /tmp/boodark
 echo "[*] Setze Standard-Theme für phpMyAdmin..."
 
