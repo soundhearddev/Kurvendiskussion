@@ -84,6 +84,238 @@ const parse = s => {
     return parsed;
 };
 
+
+
+
+
+// ============================================================================
+// MEHRERE FUNKTIONEN HANDLING
+// ============================================================================
+
+// Container für zusätzliche Funktionszeilen anlegen (falls noch nicht vorhanden)
+const funcsContainer = (() => {
+    let c = document.getElementById('functions-container');
+    if (c) return c;
+    const wrapper = document.createElement('div');
+    wrapper.id = 'functions-container';
+    wrapper.className = 'functions-container';
+    // füge direkt nach dem vorhandenen Input-Wrapper ein
+    const inputWrapper = document.querySelector('.input-wrapper');
+    if (inputWrapper && inputWrapper.parentNode) inputWrapper.parentNode.insertBefore(wrapper, inputWrapper.nextSibling);
+    return wrapper;
+})();
+
+// Farbpalette für Standardfarben
+const defaultColors = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#6f42c1', '#20c997'];
+
+// Hilfsfunktion: neue Funktions-Zeile erstellen (input + color + remove)
+const createFunctionRow = (value = '', color = '') => {
+    const row = document.createElement('div');
+    row.className = 'func-row';
+
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'fx-multi';
+    inp.placeholder = 'z.B. 2*x^2 + 3*x - 5';
+    inp.value = value;
+    inp.setAttribute('aria-label', 'Weitere Funktion eingeben');
+
+    const col = document.createElement('input');
+    col.type = 'color';
+    col.className = 'fx-color';
+    col.value = color || defaultColors[Math.floor(Math.random()*defaultColors.length)];
+    col.title = 'Farbe für diesen Graphen';
+
+    const rm = document.createElement('button');
+    rm.type = 'button';
+    rm.className = 'remove-func-btn';
+    rm.innerText = 'Entfernen';
+    rm.onclick = () => { row.remove(); };
+
+    row.appendChild(inp);
+    row.appendChild(col);
+    row.appendChild(rm);
+    return row;
+};
+
+// Die vorhandene einzige Input-Zeile (`#fx`) mit einer Farbwahl erweitern, falls noch nicht passiert
+(() => {
+    const existing = document.getElementById('fx');
+    if (!existing) return;
+    if (document.getElementById('fx-color')) return; // bereits erweitert
+
+    const color = document.createElement('input');
+    color.type = 'color';
+    color.id = 'fx-color';
+    color.className = 'fx-color';
+    color.value = defaultColors[0];
+    color.title = 'Farbe für diesen Graphen';
+
+    const parent = existing.parentNode;
+    parent.appendChild(color);
+})();
+
+// Klick-Handler: neue Eingabezeile erzeugen
+document.getElementById('spawn-new-func').onclick = (e) => {
+    e.preventDefault();
+    const row = createFunctionRow('', defaultColors[functionsCount() % defaultColors.length]);
+    funcsContainer.appendChild(row);
+    dbLogger.info('Neue Funktion hinzugefügt', 'spawn-new-func', 'ui');
+};
+
+// Hilfsfunktionen zum Sammeln aller Funktionen + Farben
+const functionsCount = () => {
+    return document.querySelectorAll('.fx-multi').length + (document.getElementById('fx') ? 1 : 0);
+};
+
+const collectFunctions = () => {
+    const list = [];
+    // Erstes (Haupt-)Input
+    const main = document.getElementById('fx');
+    const mainColor = document.getElementById('fx-color')?.value || defaultColors[0];
+    if (main && main.value.trim() !== '') list.push({orig: main.value, color: mainColor});
+
+    // Zusätzliche Inputs
+    document.querySelectorAll('.func-row').forEach(row => {
+        const inp = row.querySelector('.fx-multi');
+        const col = row.querySelector('.fx-color');
+        if (inp && inp.value.trim() !== '') list.push({orig: inp.value, color: col?.value || defaultColors[0]});
+    });
+
+    return list;
+};
+
+// Render-Funktion für mehrere Analysen (vereinigt die Einzel-Ausgabe)
+const showAnalysesCombined = (results) => {
+    let out = '<div class="analysis-multi">';
+    out += `<h2>Kurvendiskussion (Mehrfach)</h2>`;
+    results.forEach((d, idx) => {
+        out += `<div class="analysis-container" style="border-left:6px solid ${d.color};padding-left:8px;margin-bottom:12px;">`;
+        out += `<h3>f${idx+1}(x) = ${d.fn}</h3>`;
+        out += `<p><strong>f(0):</strong> ${fmt(d.y0)}</p>`;
+        out += `<p><strong>Nullstellen:</strong> ${d.zeros.length ? d.zeros.map(z=>fmt(z)).join(', ') : 'Keine'}</p>`;
+        out += `<p><strong>Hochpunkte:</strong> ${d.maxs.length? d.maxs.map(m=>`(${fmt(m.x)}, ${fmt(m.y)})`).join(', '): 'Keine'}</p>`;
+        out += `<p><strong>Tiefpunkte:</strong> ${d.mins.length? d.mins.map(m=>`(${fmt(m.x)}, ${fmt(m.y)})`).join(', '): 'Keine'}</p>`;
+        out += `<p><strong>Wendepunkte:</strong> ${d.wende.length? d.wende.map(w=>`(${fmt(w.x)}, ${fmt(w.y)})`).join(', '): 'Keine'}</p>`;
+        out += `</div>`;
+    });
+    out += '</div>';
+    el.out.innerHTML = out;
+    el.out.style.display = 'block';
+    el.load.style.display = 'none';
+    dbLogger.info('Mehrfach-Analysen angezeigt', 'showAnalysesCombined', 'display', {count: results.length});
+};
+
+// Multi-Graph-Renderer: zeichnet mehrere Funktionen mit Farben in ein Canvas
+const showGraphMultiple = (funcs) => {
+    const startTime = performance.now();
+    dbLogger.info('Multi-Graph-Renderer gestartet', 'showGraphMultiple', 'graph', {count: funcs.length});
+
+    el.out.innerHTML = '<canvas id="c" width="900" height="600"></canvas>';
+    el.out.style.display = 'block';
+    el.load.style.display = 'none';
+
+    const c = $('c'), ctx = c.getContext('2d');
+    let sx = 40, sy = 40, ox = 0, oy = 0, drag = false, dx = 0, dy = 0;
+    const toX = x => c.width/2 + x*sx + ox;
+    const toY = y => c.height/2 - y*sy + oy;
+    const fromX = px => (px-c.width/2-ox)/sx;
+
+    const draw = () => {
+        ctx.clearRect(0,0,c.width,c.height);
+        // Grid
+        ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 1;
+        for(let i=-40;i<=40;i++){ ctx.beginPath(); ctx.moveTo(toX(i),0); ctx.lineTo(toX(i),c.height); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,toY(i)); ctx.lineTo(c.width,toY(i)); ctx.stroke(); }
+        // Axes
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0,toY(0)); ctx.lineTo(c.width,toY(0)); ctx.stroke(); ctx.beginPath(); ctx.moveTo(toX(0),0); ctx.lineTo(toX(0),c.height); ctx.stroke();
+        // Numbers
+        ctx.fillStyle='#000'; ctx.font='12px Arial'; ctx.textAlign='center';
+        for(let i=-10;i<=10;i++) if(i!==0) ctx.fillText(i, toX(i), toY(0)+15);
+        ctx.textAlign='right'; for(let i=-10;i<=10;i++) if(i!==0) ctx.fillText(i, toX(0)-5, toY(i)+4);
+
+        // draw each function
+        funcs.forEach((fObj, idx) => {
+            const f = fObj.clean;
+            ctx.strokeStyle = fObj.color || defaultColors[idx % defaultColors.length];
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            let first = true;
+            for(let px=0; px<=c.width; px++){
+                const x = fromX(px), y = evalF(f, x);
+                if(y===null||!isFinite(y)) { first = true; continue; }
+                const py = toY(y);
+                if(py<-1000||py>c.height+1000) { first = true; continue; }
+                if(first){ ctx.moveTo(px,py); first=false; } else ctx.lineTo(px,py);
+            }
+            ctx.stroke();
+        });
+
+        // Legend
+        ctx.font='12px Arial'; ctx.textAlign='left';
+        funcs.forEach((fObj, idx) => {
+            const x = 10, y = 20 + idx*18;
+            ctx.fillStyle = fObj.color || defaultColors[idx % defaultColors.length];
+            ctx.fillRect(x, y-10, 12, 12);
+            ctx.fillStyle = '#000'; ctx.fillText(`f${idx+1}(x) = ${fObj.orig}`, x+18, y);
+        });
+    };
+
+    // Interaction
+    c.onmousedown = e => { drag=true; dx=e.offsetX; dy=e.offsetY; };
+    c.onmouseup = c.onmouseleave = () => { drag=false; };
+    c.onmousemove = e => { if(drag){ ox+=e.offsetX-dx; oy+=e.offsetY-dy; dx=e.offsetX; dy=e.offsetY; draw(); } };
+    c.onwheel = e => { e.preventDefault(); const z = e.deltaY<0?1.1:0.9; sx*=z; sy*=z; draw(); };
+
+    draw();
+
+    const duration = performance.now() - startTime;
+    dbLogger.info('Multi-Graph gerendert', 'showGraphMultiple', 'graph', {duration_ms: duration.toFixed(2), canvas_size: `${c.width}x${c.height}`, count: funcs.length});
+};
+
+// Interceptiere Klick auf "Berechnen" per capture-Listener und verarbeite Mehrfach-Funktionen.
+// Wir benutzen capture + stopImmediatePropagation, damit der vorhandene onclick-Handler nicht zusätzlich läuft.
+el.calc.addEventListener('click', async (ev) => {
+    // Nur intercepten, wenn es zusätzliche fx-inputs gibt oder die user mehrere eingaben gemacht hat
+    const collected = collectFunctions();
+    if (collected.length <= 1) return; // keine Mehrfach-Funktionen → Original handler weiterlaufen lassen
+
+    // stoppe andere Handler (inkl. später gesetzte el.calc.onclick)
+    ev.stopImmediatePropagation();
+    ev.preventDefault();
+
+    el.load.style.display='flex';
+    el.out.style.display='none';
+
+    const mode = document.querySelector('input[name="mode"]:checked')?.value || 'analysis';
+
+    dbLogger.info('Berechnung (Mehrfach) gestartet', 'calc.multi', mode, {count: collected.length});
+
+    // parse alle Funktionen
+    const parsedList = collected.map(c => ({ ...parse(c.orig), color: c.color, orig: c.orig }));
+
+    // Prüfe Validität
+    const invalid = parsedList.filter(p => !p.valid);
+    if (invalid.length) {
+        el.out.innerHTML = `<p class="error">❌ Mindestens eine Funktion ungültig: ${invalid.map(i=>i.orig).join(', ')}</p>`;
+        el.out.style.display='block';
+        el.load.style.display='none';
+        dbLogger.warning('Ungültige Funktionen in Mehrfach-Berechnung', 'calc.multi', 'validation', {invalid: invalid.map(i=>i.orig)});
+        return;
+    }
+
+    if (mode === 'graph') {
+        // für Graphen brauchen wir die sauberen Ausdrücke
+        const funcs = parsedList.map(p=>({ orig: p.orig, clean: p.clean, color: p.color }));
+        showGraphMultiple(funcs);
+    } else {
+        // Analyse: parallel ausführen und zusammen anzeigen
+        const promises = parsedList.map(p=>analyze(p).then(r=>({ ...r, color: p.color })));
+        const results = await Promise.all(promises);
+        showAnalysesCombined(results);
+    }
+
+}, true);
+
 // ============================================================================
 // FUNKTION AUSWERTEN
 // ============================================================================
