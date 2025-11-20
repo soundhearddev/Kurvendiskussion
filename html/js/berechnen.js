@@ -421,28 +421,28 @@ el.fx.onkeypress = e => {
 // INITIALISIERUNG
 // ============================================================================
 
-document.addEventListener('DOMContentLoaded', () => {
-    el.fx.focus();
+// document.addEventListener('DOMContentLoaded', () => {
+//     el.fx.focus();
     
-    dbLogger.info('Seite geladen', 'DOMContentLoaded', 'page_load', {
-        userAgent: navigator.userAgent,
-        language: navigator.language,
-        screenSize: `${screen.width}x${screen.height}`
-    });
-});
+//     dbLogger.info('Seite geladen', 'DOMContentLoaded', 'page_load', {
+//         userAgent: navigator.userAgent,
+//         language: navigator.language,
+//         screenSize: `${screen.width}x${screen.height}`
+//     });
+// });
 
-// Globale Error-Handler
-window.addEventListener('error', (event) => {
-    dbLogger.error('Globaler Fehler', 'window.error', 'error', {
-        message: event.message,
-        filename: event.filename,
-        lineno: event.lineno,
-        colno: event.colno
-    });
-});
+// // Globale Error-Handler
+// window.addEventListener('error', (event) => {
+//     dbLogger.error('Globaler Fehler', 'window.error', 'error', {
+//         message: event.message,
+//         filename: event.filename,
+//         lineno: event.lineno,
+//         colno: event.colno
+//     });
+// });
 
-window.addEventListener('unhandledrejection', (event) => {
-    dbLogger.error('Unhandled Promise Rejection', 'unhandledrejection', 'error', {
-        reason: event.reason
-    });
-});
+// window.addEventListener('unhandledrejection', (event) => {
+//     dbLogger.error('Unhandled Promise Rejection', 'unhandledrejection', 'error', {
+//         reason: event.reason
+//     });
+// });
