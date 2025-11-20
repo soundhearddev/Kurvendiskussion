@@ -51,7 +51,7 @@ sudo apt install -y unzip wget
 
 
 PHPMYADMIN_THEME_DIR="/usr/share/phpmyadmin/themes/"
-THEME_NAME="BooDark"
+THEME_NAME="boodark"
 LINK="https://files.phpmyadmin.net/themes/boodark/1.0.0/boodark-1.0.0.zip"
 CONFIG_FILE="/etc/phpmyadmin/config.inc.php"
 
